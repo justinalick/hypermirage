@@ -50,14 +50,14 @@ body { background: var(--ground); color: var(--ink); font-family: var(--sans); f
 h1, h2 { font-family: var(--sans); font-weight: 600; text-wrap: balance; margin: 0; }
 h1 { font-size: clamp(28px, 4.4vw, 42px); line-height: 1.12; }
 h1 .hl { color: var(--accent); }
-/* "a mirage" shimmers like heat haze, fades almost away, then comes back. Still for reduced motion. */
+/* "a mirage" shimmers like heat haze, fades to faint (never invisible), then comes back. Still for reduced motion. */
 h1 .hl { display: inline-block; animation: mirage 9s ease-in-out infinite; }
 @keyframes mirage {
   0%, 52%, 100% { opacity: 1; filter: none; transform: none; }
   58% { opacity: .85; filter: blur(.5px); transform: skewX(-3deg) scaleY(1.02); }
   63% { opacity: .45; filter: blur(1.5px); transform: skewX(4deg) translateY(1px) scaleY(.97); }
-  68% { opacity: .08; filter: blur(3px); transform: skewX(-5deg) translateY(-1px) scaleY(1.04); }
-  76% { opacity: .04; filter: blur(4px); transform: skewX(3deg); }
+  68% { opacity: .2; filter: blur(3px); transform: skewX(-5deg) translateY(-1px) scaleY(1.04); }
+  76% { opacity: .15; filter: blur(4px); transform: skewX(3deg); }
   84% { opacity: .5; filter: blur(1.5px); transform: skewX(-3deg) scaleY(.98); }
   91% { opacity: .9; filter: blur(.4px); transform: skewX(1deg); }
 }
@@ -170,7 +170,7 @@ body { padding-top: 56px; padding-bottom: 96px; margin: 0; }
 @media (prefers-reduced-motion: reduce) { .rail span { animation: none !important; } .c-bird { background-position: 0 0; } }
 @media (max-width: 640px) { .topbar .what, .topbar .toc { display: none; } .botbar .in { padding-block: 6px; } .botbar ul { gap: 4px 14px; } }
 
-@media (max-width: 960px) { .titlebox h1 { font-size: clamp(26px, 4.4vw, 40px); text-wrap: balance; } .titlebox h1 .l { display: inline; white-space: normal; font-size: inherit; } }
+@media (max-width: 960px) { .titlebox h1 { font-size: clamp(26px, 3vw, 40px); text-wrap: balance; } .titlebox h1 .l { display: inline; white-space: normal; font-size: inherit; } }
 @media (max-width: 640px) { .head { grid-template-columns: 1fr; } .byline { order: -1; justify-content: flex-end; } .byline .punk { width: 72px; height: 72px; } }
 </style>
 </head>
