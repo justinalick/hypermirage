@@ -52,7 +52,7 @@ h1, h2 { font-family: var(--sans); font-weight: 600; text-wrap: balance; margin:
 h1 { font-size: clamp(28px, 4.4vw, 42px); line-height: 1.12; }
 h1 .hl { color: var(--accent); }
 /* "a mirage" shimmers like heat haze, fades to faint (never invisible), then comes back. Still for reduced motion. */
-h1 .hl { display: inline-block; animation: mirage 9s ease-in-out infinite; }
+h1 .hl { display: inline-block; animation: mirage 5s ease-in-out infinite; }
 @keyframes mirage {
   0%, 52%, 100% { opacity: 1; filter: none; transform: none; }
   58% { opacity: .85; filter: blur(.5px); transform: skewX(-3deg) scaleY(1.02); }
