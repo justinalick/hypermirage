@@ -119,8 +119,8 @@ topic_queue() {
 TOPICS=(survival concentration markouts funding cancels heatmap depth_vol vol_spread impact metaorders ofi taker_clusters archetypes regimes queue)
 analysis() { for t in "${@:-${TOPICS[@]}}"; do echo "== analysis: $t" >&2; "topic_$t"; done; }
 
-CHARTS=(survival concentration markouts markouts_violin funding cancels_1 cancels_2 cancels_3 heatmap depth_vol vol_spread impact
-        metaorder ofi taker_markouts archetypes_v2 archetypes_3d regimes queue_fill)
+CHARTS=(survival concentration markouts markouts_violin funding cancels_1 cancels_2 cancels_3 heatmap depth_week depth_vol vol_spread impact
+        metaorder ofi taker_markouts archetypes_v2 regimes queue_fill)
 charts() { for c in "${CHARTS[@]}"; do echo "== chart: $c" >&2; "$PY" "charts/$c.py"; done; }
 
 CHECKS=(spotcheck funding queue cancels vol_spread)

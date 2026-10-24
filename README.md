@@ -165,14 +165,14 @@ python3 -m venv .venv
 | Depth vs volatility | `depth_vol` | `analysis/offhours/offhours_depth.py`, `analysis/depth_vol/prep2.py` | `charts/depth_vol.py` |
 | Spread vs volatility | `vol_spread` | `analysis/vol_spread/` | `charts/vol_spread.py` |
 | Maker concentration | `concentration` | `analysis/concentration/`, `charts/concentration_cache.py` | `charts/concentration.py` |
-| Depth by hour and weekday | `heatmap` | `analysis/heatmap/depth_check.py` | `charts/heatmap.py` |
+| Depth by hour and weekday | `heatmap` | `analysis/heatmap/depth_check.py` | `charts/heatmap.py`, `charts/depth_week.py` |
 | Fill markouts | `markouts` | `analysis/markout/rerun/` | `charts/markouts.py`, `charts/markouts_violin.py` |
 | Funding and the oracle premium | `funding` | `analysis/funding/` | `charts/funding.py` |
 | Price impact | `impact` | `analysis/impact/` | `charts/impact.py` |
 | Order flow imbalance | `ofi` | `analysis/ofi/` | `charts/ofi.py` |
 | Taker markouts by cluster | `taker_clusters` | `analysis/taker_clusters/` | `charts/taker_markouts.py` |
 | Metaorder shapes | `metaorders` | `analysis/metaorder_shapes/` | `charts/metaorder.py` |
-| Trader archetypes | `archetypes` | `analysis/archetypes/` | `charts/archetypes_v2.py`, `charts/archetypes_3d.py` |
+| Trader archetypes | `archetypes` | `analysis/archetypes/` | `charts/archetypes_v2.py` |
 | Book regimes | `regimes` | `analysis/regimes/` | `charts/regimes.py` |
 | Queue position and fills | `queue` | `analysis/queue_replay.py`, `analysis/queue_fill.sql`, `analysis/queue_km.py` | `charts/queue_fill.py` |
 | Cancels and amends | `cancels` | `analysis/cancels/` | `charts/cancels_1.py` to `charts/cancels_3.py` |

@@ -48,7 +48,7 @@ for ax, k in ((aL, "sp"), (aR, "dep")):
 aL.set_ylim(-35, 25)
 aR.set_ylim(-12, 18)
 o = dec[dec.es == "open"]
-ja.signal(aL, np.exp(o.rv.iloc[-1]), p(o.sp.iloc[-1]), ms=11)
+ja.signal(aL, np.exp(o.rv.iloc[-1]), p(o.sp.iloc[-1]), ms=0)
 ja.label_at(aL, 2.9, 19.5, f"futures open: {gap['open', 'sp']:+.0f}%", "actual", dy=0, ha="right", size=LB)
 ja.label_at(aL, 0.3, -33, "futures closed: noisy", "model", dy=0, ha="left", size=LB)
 ja.panel_title(aL, "quoted spread, time-weighted", size=LB)

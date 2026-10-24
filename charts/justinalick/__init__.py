@@ -402,7 +402,7 @@ RESULT_BORDER = "ink"    # result box border: neutral and boldest; never a serie
 # official marks followed by "@justinalick" once. The URLs are kept here for docs and links.
 # Marks live in assets/icons/ (<key>-<theme>.png, else <key>.png), taken unmodified from each
 # platform's brand page; without a file the row falls back to a pixel key-cap ("X", "TG").
-CONTACTS = [("x", "X", "x.com/justinalick"), ("telegram", "TG", "t.me/justinalick")]
+CONTACTS = [("x", "X", "x.com/justinalick"), ("telegram", "TG", "t.me/justinalick"), ("github", "GH", "github.com/justinalick")]
 
 
 def _marker(fig, key, label, x, yc, size=22):
@@ -466,13 +466,13 @@ def finish(fig, title, subtitle="", source="", hl=None, hl_role="accent", ax=Non
     W, H = fig.get_size_inches() * DPI
     r = fig.canvas.get_renderer()
     X, Y = 2 * U, 2 * U + 34
-    limit = byline(fig, corner) - 2 * U - X
+    limit = byline(fig, corner) - 2 * U - X - U // 2
     size = 25
 
     def width(txt, fs):
         t = fig.text(0, 0, txt, fontsize=fs, family=SANS, weight="semibold")
         w_ = t.get_window_extent(r).width; t.remove(); return w_
-    while width(title, size) > limit and size > 18:
+    while width(title, size) > limit and size > 15:
         size -= 0.5
     space = width("a a", size) - width("aa", size)
     if hl and hl in title:
@@ -489,7 +489,13 @@ def finish(fig, title, subtitle="", source="", hl=None, hl_role="accent", ax=Non
         fig.text(X / W, 1 - Y / H, title, fontsize=size, family=SANS, weight="semibold",
                  color=C["ink"], va="baseline")
     if subtitle:
-        fig.text(X / W, 1 - (Y + 34) / H, subtitle, fontsize=12.5, family=SANS, color=C["muted"],
+        def swidth(txt, fs):
+            t = fig.text(0, 0, txt, fontsize=fs, family=SANS)
+            w_ = t.get_window_extent(r).width; t.remove(); return w_
+        ssize = 12.5
+        while swidth(subtitle, ssize) > limit and ssize > 10:   # keep the subtitle clear of the byline too
+            ssize -= 0.25
+        fig.text(X / W, 1 - (Y + 34) / H, subtitle, fontsize=ssize, family=SANS, color=C["muted"],
                  va="baseline")
     vape(fig, X, Y + 52, length=width(title, size))          # full title width, LED on the last letter
     if source:
