@@ -7,6 +7,8 @@ Hyperliquid perpetual markets. It starts with Trade[XYZ]'s S&P 500 perpetual (`x
 high-volume HIP-3 market, and follows every limit order through its full life: placed,
 modified, filled, or cancelled.
 
+**Read the report:** [justinalick.com/projects/hypermirage](https://justinalick.com/projects/hypermirage/), the illustrated atlas of every result below.
+
 Data partner: **[Hydromancer](https://docs.hydromancer.xyz)**.
 
 By [Justin Alick](https://justinalick.com) ([@justinalick](https://x.com/justinalick)).
@@ -176,6 +178,8 @@ python3 -m venv .venv
 | Book regimes | `regimes` | `analysis/regimes/` | `charts/regimes.py` |
 | Queue position and fills | `queue` | `analysis/queue_replay.py`, `analysis/queue_fill.sql`, `analysis/queue_km.py` | `charts/queue_fill.py` |
 | Cancels and amends | `cancels` | `analysis/cancels/` | `charts/cancels_1.py` to `charts/cancels_3.py` |
+
+`charts/og_card.py` draws the report's link-preview image (1200 x 630); it uses no data.
 
 Notes:
 - `data/derived/markout/bbo_t.parquet` (replayed best bid and ask with block times) is shared by markouts,
