@@ -37,10 +37,10 @@ aw = a.get_window_extent(r).width
 fig.text(*px(x + aw, y0 + 2 * lh), "a mirage?", family=ja.SANS, weight="semibold", fontsize=27,
          color=C["accent"], va="baseline")
 
-fig.text(*px(x, y0 + 3 * lh - 8), "Partly. The book holds, but size costs 2 to 6x what it shows.",
+fig.text(*px(x, y0 + 3 * lh - 8), "Partly. Metaorders move price 2 to 6x more than the book implies.",
          family=ja.SANS, fontsize=13, color=C["muted"], va="baseline")
 fig.text(*px(x, y0 + 3 * lh + 28), "xyz:SP500  ·  26M orders  ·  Oct 8 to 21, 2026",
          family=ja.MONO, fontsize=10.5, color=C["faint"], va="baseline")
 ja.handle_row(fig, x, H - (y0 + 3 * lh + 84), align="left")   # above the domain label X overlays bottom-left
 fig.add_artist(Rectangle((0, 0), 1, 1, transform=fig.transFigure, fill=False, ec=C["frame"], lw=4, zorder=100))
-fig.savefig("out/og-xyz-sp500.png", dpi=DPI, facecolor=C["ground"])
+fig.savefig("out/og-xyz-sp500-v2.png", dpi=DPI, facecolor=C["ground"])

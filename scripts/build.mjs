@@ -29,7 +29,7 @@ if (/claude\.ai/i.test(page)) fail("the page links claude.ai");
 rmSync("dist", { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 cpSync("report/index.html", `${out}/index.html`);
-cpSync("report/og-xyz-sp500.png", `${out}/og-xyz-sp500.png`);
+cpSync("report/og-xyz-sp500-v2.png", `${out}/og-xyz-sp500-v2.png`);
 cpSync("LICENSE", `${out}/LICENSE`);
 
 // The page has no scripts. Styles are inline (one <style> block plus style
@@ -56,11 +56,12 @@ writeFileSync("dist/_headers", `${BASE}/*
   Permissions-Policy: camera=(), microphone=(), geolocation=()
   X-Frame-Options: DENY
   X-Robots-Tag: noindex
+  Strict-Transport-Security: max-age=31536000
 
 ${BASE}/
   Cache-Control: public, max-age=0, must-revalidate, no-transform
 
-${BASE}/og-xyz-sp500.png
+${BASE}/og-xyz-sp500-v2.png
   Cache-Control: public, max-age=3600
 `);
 console.log(`built ${out} (${(html.length / 1e6).toFixed(1)} MB page)`);
