@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SP500 Archetypes 3D</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.2/plotly.min.js"></script>
+<style>
+:root { --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --grid: #e4e3df;
+  --maker: #2a78d6; --ui: #eb6834; --api: #1baf7a; --noise: #c9c8c2; --nullc: #8a8984; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --surface: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7;
+  --grid: #3a3a37; --maker: #3987e5; --ui: #d95926; --api: #199e70; --noise: #5a5955; --nullc: #9a998f; } }
+:root[data-theme="dark"] { --surface: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --grid: #3a3a37;
+  --maker: #3987e5; --ui: #d95926; --api: #199e70; --noise: #5a5955; --nullc: #9a998f; }
+body { margin: 0; padding: 20px 16px; background: var(--surface); color: var(--ink); font: 14px/1.45 system-ui, sans-serif; }
+h1 { font-size: 20px; margin: 0 0 4px; } p { margin: 4px 0; color: var(--ink2); max-width: 1100px; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 14px; }
+@media (max-width: 900px) { .row { grid-template-columns: 1fr; } }
+.panel h2 { font-size: 15px; margin: 0 0 2px; } .plot { height: 600px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 6px 0; color: var(--ink2); font-size: 13px; }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+small { color: var(--ink2); }
+</style>
+</head>
+<body>
+<h1>Do xyz:SP500 traders form distinct archetypes? Mostly no</h1>
+<p id="sub"></p>
+<p>Drag to rotate, scroll to zoom, hover a dot for its cluster and stats. Axes are UMAP dimensions and have no units; distance means "similar behavior" only locally.</p>
+<div class="row">
+  <div class="panel"><h2>Real accounts, colored by group</h2><div class="legend" id="leg"></div><div class="plot" id="real"></div></div>
+  <div class="panel"><h2 id="nt"></h2><div class="legend"><span><span class="sw" style="background:var(--nullc)"></span>Main blob</span><span><span class="sw" style="background:var(--ui)"></span>Split-off island</span></div><div class="plot" id="null"></div>
+  <small>Every feature shuffled across accounts on its own: no real accounts, no co-occurring features. Rare nonzero values (ALO, TWAP, one-way flow) still split off, which is why most real clusters cannot be trusted either.</small></div>
+</div>
+<p style="margin-top:14px"><small>2026-10-08 to 2026-10-21 UTC. Percent = share of fill notional, both sides of each trade counted. One address is not one firm. Source: Hydromancer Reservoir / node data.</small></p>
+<script>
+const D = /*DATA*/null;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const G = {maker: 'Post-only makers', api: 'API-routed takers', ui: 'Builder / front-end takers', noise: 'Unassigned (noise)'};
+document.getElementById('sub').textContent = `2026-10-08 to 2026-10-21 UTC. ${D.n.toLocaleString()} accounts with at least 30 fills, 19 standardized behavior features, clustered with UMAP (10-D) then HDBSCAN. Two post-only maker groups; most taker clusters dissolve under resampling.`;
+document.getElementById('nt').textContent = `Shuffled null: the same pipeline still finds ${D.nnull} clusters`;
+document.getElementById('leg').innerHTML = ['maker','api','ui','noise'].map(g =>
+  `<span><span class="sw" style="background:var(--${g})"></span>${G[g]}: ${D.summ[g][0]} accts, ${D.summ[g][1]}%</span>`).join('');
+function layout() {
+  const ax = {showticklabels: false, title: '', gridcolor: css('--grid'), zerolinecolor: css('--grid'), backgroundcolor: css('--surface'), showbackground: true};
+  return {paper_bgcolor: css('--surface'), font: {color: css('--ink2')}, margin: {l: 0, r: 0, t: 0, b: 0}, showlegend: false,
+    scene: {xaxis: {...ax, title: 'UMAP 1'}, yaxis: {...ax, title: 'UMAP 2'}, zaxis: {...ax, title: 'UMAP 3'}}};
+}
+function draw() {
+  const traces = ['noise','api','ui','maker'].map(g => {
+    const r = D.rows.filter(x => x[4] === g);
+    return {type: 'scatter3d', mode: 'markers', x: r.map(v => v[0]), y: r.map(v => v[1]), z: r.map(v => v[2]),
+      marker: {size: g === 'noise' ? 2 : 3, color: css('--' + g), opacity: g === 'noise' ? 0.6 : 0.9},
+      text: r.map(v => `<b>${v[3] >= 0 ? 'Cluster ' + (v[3] + 1) + ': ' : ''}${v[5]}</b><br>` +
+        (v[6] !== null ? `Cluster stability (Jaccard): ${v[6]}<br>` : '') +
+        `Notional: $${Math.round(10 ** v[7]).toLocaleString()}<br>Maker share: ${Math.round(100 * v[8])}%<br>` +
+        `Median order: $${v[9].toLocaleString()}<br>60 s markout: ${v[10]} bps<br>Days active: ${v[11]} of 14`),
+      hovertemplate: '%{text}<extra></extra>'};
+  });
+  Plotly.react('real', traces, layout(), {displaylogo: false, responsive: true});
+  const big = Object.entries(D.null.reduce((a, v) => (v[3] >= 0 && (a[v[3]] = (a[v[3]] || 0) + 1), a), {})).sort((a, b) => b[1] - a[1])[0][0] | 0;
+  const nt = [true, false].map(main => {
+    const r = D.null.filter(v => (v[3] === big || v[3] < 0) === main);
+    return {type: 'scatter3d', mode: 'markers', x: r.map(v => v[0]), y: r.map(v => v[1]), z: r.map(v => v[2]),
+      marker: {size: 2.5, color: css(main ? '--nullc' : '--ui'), opacity: 0.85},
+      text: r.map(v => v[3] < 0 ? 'Noise' : main ? 'Main blob' : 'Fake cluster ' + (v[3] + 1)), hovertemplate: '%{text}<extra></extra>'};
+  });
+  Plotly.react('null', nt, layout(), {displaylogo: false, responsive: true});
+}
+draw();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', draw);
+</script>
+</body>
+</html>

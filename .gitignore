@@ -1,0 +1,18 @@
+# local data and outputs: never committed
+data/
+out/
+config/
+private/
+*.parquet
+*.csv
+*.duckdb
+*.duckdb.wal
+*.pkl
+*.npz
+*.zst
+# environment
+.venv/
+__pycache__/
+*.pyc
+.env
+*.env
