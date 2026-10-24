@@ -177,7 +177,9 @@ body { padding-top: 56px; padding-bottom: 96px; margin: 0; }
   .botbar p { grid-area: c; } .botbar ul { grid-area: l; } .totop { grid-area: t; margin: 0; } }
 @media (max-width: 640px) { .topbar .what, .topbar .toc:not(.code) { display: none; } .botbar .in { padding-block: 6px; } .botbar ul { gap: 4px 14px; } }
 
-@media (max-width: 960px) { .titlebox h1 { font-size: clamp(26px, 3vw, 40px); text-wrap: balance; } .titlebox h1 .l { display: inline; white-space: normal; font-size: inherit; } }
+/* Narrower: three set lines (longest 11.37em), so the bar can still end with the title. */
+.titlebox h1 br.n { display: none; }
+@media (max-width: 960px) { .titlebox h1 { font-size: clamp(22px, 8.5cqi, 40px); white-space: nowrap; } .titlebox h1 .l { display: inline; font-size: inherit; } .titlebox h1 br.n { display: inline; } }
 /* Open-source line under the lede. */
 .oss { margin: 0; font-family: var(--mono); font-size: 14px; color: var(--muted); }
 /* The punk sits in the frame's top-right corner, 8px in from the border. */
@@ -197,7 +199,7 @@ body { padding-top: 56px; padding-bottom: 96px; margin: 0; }
 <div class="head">
  <div class="intro">
   <div class="kicker">Hyperliquid microstructure</div>
-  <div class="titlebox"><div class="tfit"><h1><span class="l l1">Hypermirage: is liquidity on</span> <span class="l">Hyperliquid's SP500 perp <span class="hl">a mirage</span>?</span></h1><div class="vape" aria-hidden="true"></div></div></div>
+  <div class="titlebox"><div class="tfit"><h1><span class="l l1">Hypermirage: is liquidity<br class="n"> on</span> <span class="l">Hyperliquid's SP500<br class="n"> perp <span class="hl">a mirage</span>?</span></h1><div class="vape" aria-hidden="true"></div></div></div>
   <p class="lede">Partly. The displayed book is real and mostly stays put, even when prices jump. But it is thin where it counts: metaorders move the price 2 to 6 times more than the book implies, and depth falls to a third when CME futures pause.</p>
   <p class="oss">Thanks to <a href="https://x.com/hydromancerxyz">Hydromancer</a>.<br>The code for every chart and check is open source on <a href="https://github.com/justinalick/hypermirage">GitHub</a>.</p>
  </div>
