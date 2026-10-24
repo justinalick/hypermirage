@@ -175,10 +175,13 @@ body { padding-top: 56px; padding-bottom: 96px; margin: 0; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .rail span { animation: none !important; } .c-bird { background-position: 0 0; } }
 /* On phones and upright tablets the button joins the footer row, so it never covers the text column. */
 @media (max-width: 840px) { .totop { position: static; order: 3; width: 32px; height: 32px; font-size: 16px; margin-left: auto; } }
+/* Phones: copyright and the button share the first footer row, the links take the second. */
+@media (max-width: 640px) { .botbar .in { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "c t" "l l"; gap: 2px 12px; }
+  .botbar p { grid-area: c; } .botbar ul { grid-area: l; } .totop { grid-area: t; margin: 0; } }
 @media (max-width: 640px) { .topbar .what, .topbar .toc { display: none; } .botbar .in { padding-block: 6px; } .botbar ul { gap: 4px 14px; } }
 
 @media (max-width: 960px) { .titlebox h1 { font-size: clamp(26px, 3vw, 40px); text-wrap: balance; } .titlebox h1 .l { display: inline; white-space: normal; font-size: inherit; } }
-@media (max-width: 640px) { .head { grid-template-columns: 1fr; } .byline { order: -1; justify-content: flex-end; } .byline .punk { width: 72px; height: 72px; } }
+@media (max-width: 640px) { .cta .links { flex-direction: column; gap: 12px; } .repro { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; } .head { grid-template-columns: 1fr; } .byline { order: -1; justify-content: flex-end; } .byline .punk { width: 72px; height: 72px; } }
 </style>
 </head>
 <body>
