@@ -72,6 +72,8 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .titlebox { display: grid; gap: 12px; container-type: inline-size; max-width: 760px; }
 .titlebox h1 { font-size: clamp(24px, 5.85cqi, 64px); text-wrap: wrap; }
 .titlebox h1 .l { display: block; white-space: nowrap; }
+/* The vape bar is as wide as the title's longest line. */
+.tfit { display: grid; gap: 12px; width: fit-content; max-width: 100%; }
 .titlebox h1 .l1 { font-size: clamp(24px, 7.6cqi, 84px); }
 .titlebox h1 { line-height: 1.08; }
 .vape { height: 8px; background: linear-gradient(to right, var(--rod) calc(100% - 8px), var(--led) calc(100% - 8px)); }
@@ -195,7 +197,7 @@ body { padding-top: 56px; padding-bottom: 96px; margin: 0; }
 <div class="head">
  <div class="intro">
   <div class="kicker">Hyperliquid microstructure</div>
-  <div class="titlebox"><h1><span class="l l1">Hypermirage: is liquidity on</span> <span class="l">Hyperliquid's SP500 perp <span class="hl">a mirage</span>?</span></h1><div class="vape" aria-hidden="true"></div></div>
+  <div class="titlebox"><div class="tfit"><h1><span class="l l1">Hypermirage: is liquidity on</span> <span class="l">Hyperliquid's SP500 perp <span class="hl">a mirage</span>?</span></h1><div class="vape" aria-hidden="true"></div></div></div>
   <p class="lede">Partly. The displayed book is real and mostly stays put, even when prices jump. But it is thin where it counts: metaorders move the price 2 to 6 times more than the book implies, and depth falls to a third when CME futures pause.</p>
   <p class="oss">Thanks to <a href="https://x.com/hydromancerxyz">Hydromancer</a>.<br>The code for every chart and check is open source on <a href="https://github.com/justinalick/hypermirage">GitHub</a>.</p>
  </div>
