@@ -1,0 +1,25 @@
+// Worker for justinalick.com/projects/hypermirage: the report page as static
+// files, no code. The route outranks the main site's custom domain on that
+// path only; favicons and /fonts/ come from the main site on the same origin.
+{
+  "$schema": "https://unpkg.com/wrangler@4/config-schema.json",
+  "name": "hypermirage",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "none"
+  },
+  "routes": [
+    { "pattern": "justinalick.com/projects/hypermirage*", "zone_name": "justinalick.com" }
+  ],
+  // No request logs or traces; the site's privacy policy promises none are kept.
+  "observability": {
+    "enabled": false,
+    "logs": { "enabled": false, "invocation_logs": false },
+    "traces": { "enabled": false }
+  },
+  // Served only on justinalick.com.
+  "workers_dev": false,
+  "preview_urls": false
+}

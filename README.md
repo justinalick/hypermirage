@@ -181,6 +181,10 @@ python3 -m venv .venv
 
 `charts/og_card.py` draws the report's link-preview image (1200 x 630); it uses no data.
 
+`report/` holds the published page (`report/index.html`, `report/og-xyz-sp500.png`). `node scripts/build.mjs` builds it into
+`dist/` with its security headers for justinalick.com/projects/hypermirage; the build fails if the page would load anything
+from another site.
+
 Notes:
 - `data/derived/markout/bbo_t.parquet` (replayed best bid and ask with block times) is shared by markouts,
   impact, metaorders, taker clusters and archetypes; the first topic that needs it builds it.

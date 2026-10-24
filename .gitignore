@@ -16,3 +16,6 @@ __pycache__/
 *.pyc
 .env
 *.env
+# report build output (scripts/build.mjs)
+dist/
+.wrangler/
