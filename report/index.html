@@ -197,7 +197,7 @@ body { padding-top: 56px; padding-bottom: 96px; margin: 0; }
   <div class="kicker">Hyperliquid microstructure</div>
   <div class="titlebox"><h1><span class="l l1">Hypermirage: is liquidity on</span> <span class="l">Hyperliquid's SP500 perp <span class="hl">a mirage</span>?</span></h1><div class="vape" aria-hidden="true"></div></div>
   <p class="lede">Partly. The displayed book is real and mostly stays put, even when prices jump. But it is thin where it counts: metaorders move the price 2 to 6 times more than the book implies, and depth falls to a third when CME futures pause.</p>
-  <p class="oss">The code for every chart and check is open source on <a href="https://github.com/justinalick/hypermirage">GitHub</a>.</p>
+  <p class="oss">Built on <a href="https://x.com/hydromancerxyz">Hydromancer</a> Reservoir / node data. Thank you, Hydromancer.<br>The code for every chart and check is open source on <a href="https://github.com/justinalick/hypermirage">GitHub</a>.</p>
  </div>
 </div>
 <dl class="facts"><div><dt>market</dt><dd>xyz:SP500 perp, Hyperliquid</dd></div><div><dt>window</dt><dd>2026-10-08 to 2026-10-21 UTC</dd></div><div><dt>data</dt><dd><a href="https://x.com/hydromancerxyz">Hydromancer</a> Reservoir / node data</dd></div><div><dt>code</dt><dd><a href="https://github.com/justinalick/hypermirage">github.com/justinalick/hypermirage</a></dd></div></dl>
@@ -290,7 +290,7 @@ body { padding-top: 56px; padding-bottom: 96px; margin: 0; }
 <h2>Methods and data</h2>
 <p class="methods">Fills and order statuses for the xyz:SP500 perp on Hyperliquid, Oct 8 to 21, 2026, from Hydromancer Reservoir / node data; funding and oracle premium from the Hyperliquid public API, Mar 18 to Oct 23, 2026. The order book is replayed block by block (about 70 ms) from node order statuses and checked against exchange snapshots. Markouts use the mid as of every top-of-book change; confidence intervals are block bootstraps over hours. Every headline number was recomputed with separate code; most sections link an independent check script. Accounts are addresses, not firms, and nothing here identifies one. The charts describe measured behavior, not intent.</p>
 <p class="methods"><b>Replicate it.</b> All code is at <a href="https://github.com/justinalick/hypermirage/tree/6354f711208648ae6456b39891e2f662581e03a7">github.com/justinalick/hypermirage</a> (pinned to commit 6354f71); each section above links its own analysis and chart scripts, and most link an independent check script. Reservoir data is a requester-pays S3 bucket, and node data needs Hydromancer access; see the repo README.</p>
-<p class="methods"><b>Thanks</b> to <a href="https://x.com/hydromancerxyz">Hydromancer</a> for the Reservoir and node data behind every chart on this page.</p>
+<p class="methods"><b>Thank you to <a href="https://x.com/hydromancerxyz">Hydromancer</a>.</b> This study would not exist without its Reservoir and node data: every chart on this page is built from it.</p>
 <pre class="repro">git clone https://github.com/justinalick/hypermirage && cd hypermirage
 ./run.sh fetch       # Reservoir fills + 1-minute L2
 ./run.sh pipeline    # per day: order lifecycle and block-by-block book replay
