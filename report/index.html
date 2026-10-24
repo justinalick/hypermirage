@@ -176,10 +176,10 @@ body { padding-top: 56px; padding-bottom: 96px; margin: 0; }
 @media (max-width: 640px) { .topbar .what, .topbar .toc { display: none; } .botbar .in { padding-block: 6px; } .botbar ul { gap: 4px 14px; } }
 
 @media (max-width: 960px) { .titlebox h1 { font-size: clamp(26px, 3vw, 40px); text-wrap: balance; } .titlebox h1 .l { display: inline; white-space: normal; font-size: inherit; } }
-/* The punk sits tight in the frame's top-right corner. */
+/* The punk sits in the frame's top-right corner, 8px in from the border. */
 .wrap { position: relative; }
-.corner-punk { position: absolute; top: 0; right: 0; width: 96px; height: 96px; image-rendering: pixelated; }
-@media (max-width: 640px) { .corner-punk { width: 48px; height: 48px; } .cta .links { flex-direction: column; gap: 12px; } .repro { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; } }
+.corner-punk { position: absolute; top: 8px; right: 8px; width: 96px; height: 96px; image-rendering: pixelated; }
+@media (max-width: 640px) { .corner-punk { width: 48px; height: 48px; top: 6px; right: 6px; } .cta .links { flex-direction: column; gap: 12px; } .repro { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; } }
 </style>
 </head>
 <body>
