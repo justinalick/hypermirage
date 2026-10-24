@@ -31,7 +31,7 @@ ja.vape(fig, x, 3 * U + 14, length=kw)
 
 # headline: the question, "a mirage?" in the accent, wrapped clear of the punk
 y0, lh = 6 * U + 30, 64
-for i, ln in enumerate(["Is liquidity on", "Hyperliquid's S&P 500", "perp "]):
+for i, ln in enumerate(["Is liquidity on", "Hyperliquid's SP500", "perp "]):
     a = fig.text(*px(x, y0 + i * lh), ln, family=ja.SANS, weight="semibold", fontsize=27, color=C["ink"], va="baseline")
 aw = a.get_window_extent(r).width
 fig.text(*px(x + aw, y0 + 2 * lh), "a mirage?", family=ja.SANS, weight="semibold", fontsize=27,
@@ -43,4 +43,4 @@ fig.text(*px(x, y0 + 3 * lh + 28), "xyz:SP500  ·  26M orders  ·  Oct 8 to 21, 
          family=ja.MONO, fontsize=10.5, color=C["faint"], va="baseline")
 ja.handle_row(fig, x, H - (y0 + 3 * lh + 84), align="left")   # above the domain label X overlays bottom-left
 fig.add_artist(Rectangle((0, 0), 1, 1, transform=fig.transFigure, fill=False, ec=C["frame"], lw=4, zorder=100))
-fig.savefig("out/og-xyz-sp500-v2.png", dpi=DPI, facecolor=C["ground"])
+fig.savefig("out/og-xyz-sp500-v3.png", dpi=DPI, facecolor=C["ground"])
