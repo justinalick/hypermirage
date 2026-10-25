@@ -37,8 +37,13 @@ recomputed with separate code. `./run.sh charts` rebuilds the chart for each res
 4. **Small takers are early but still lose after fees.** Takers pay about 0.37 bps to cross, then the
    price follows them. Orders under $10k are ahead in 67% of hours at 10 s, but at 1.13 bps in fees
    they end about 1 bp underwater.
-5. **Size moves price far more than the book suggests.** Impact grows with size to the power of about
-   0.38, and metaorders move the price 2 to 6 times more than walking the displayed book would.
+5. **Metaorders move price far more than the book suggests.** Impact grows with size to the power of
+   about 0.38, and metaorders move the price about 2 to 6x more than one sweep of the displayed book
+   would. A metaorder is one account's consecutive taker orders on the same side, with no gap longer
+   than 5 minutes (liquidations excluded). Its impact is the mid just after its last fill against the
+   mid just before its first. The book benchmark is a single order of the same size sweeping the
+   displayed top 20 levels at once, with no refill. Part of the gap is price drift in the trader's
+   direction while they trade, not missing depth.
 
 ### Also measured
 
