@@ -1,4 +1,4 @@
-"""Step 2: depth vs realized volatility for xyz:SP500, 2026-10-08..21, and the two-panel chart.
+"""Step 2: depth vs realized volatility for xyz:SP500, every day of the run window (scripts/window.py), and the two-panel chart.
 
 Input: per-minute depth table from minute_depth.py (t, mid, d5, d10, d25, d_all).
 Output: depth_vs_vol_v2.png (1600x900) and @2x, plus the numbers printed to stdout.
@@ -29,6 +29,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib.ticker import FixedLocator, FuncFormatter, NullLocator
+import sys as _sys; _sys.path.insert(0, "scripts")
+import window as _WIN
+_WIN.atlas_only("analysis/depth_vol/prep2.py and charts/depth_vol.py")   # first-version figure: its text describes the atlas window
 
 src, out_dir = sys.argv[1], sys.argv[2].rstrip("/") + "/"
 DEPTH = sys.argv[sys.argv.index("--depth") + 1] if "--depth" in sys.argv else "d10"

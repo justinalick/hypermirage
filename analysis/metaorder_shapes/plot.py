@@ -1,5 +1,8 @@
 """Chart: execution-shape clusters (left) and impact coefficient by group (right)."""
 import json, numpy as np, pandas as pd, matplotlib
+import sys as _sys; _sys.path.insert(0, "scripts")
+import window as _WIN
+_WIN.atlas_only("charts/metaorder.py")   # first-version figure: its text describes the atlas window
 matplotlib.use("Agg"); import matplotlib.pyplot as plt
 O = "data/derived/metaorder_shapes"
 C = pd.read_parquet(f"{O}/curves.parquet"); L = pd.read_parquet(f"{O}/labels.parquet"); R = json.load(open(f"{O}/impact.json"))

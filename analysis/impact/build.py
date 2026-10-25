@@ -1,6 +1,9 @@
-"""Price impact vs signed size, xyz:SP500 2026-10-08..21. Builds taker-order and metaorder tables
+"""Price impact vs signed size, xyz:SP500, every day of the run window (scripts/window.py). Builds taker-order and metaorder tables
 with pre/post mids from the replayed BBO (data/derived/markout/bbo_t.parquet)."""
 import duckdb, numpy as np, pandas as pd
+import sys
+sys.path.insert(0, "scripts")
+import window as WIN
 R = "."
 O = f"{R}/data/derived/impact"
 con = duckdb.connect()
@@ -12,8 +15,8 @@ o = con.execute(f"""
  select address a, order_id, any_value(side) side, min(epoch_ns(timestamp::timestamp))::bigint t0,
         max(epoch_ns(timestamp::timestamp))::bigint t1, sum(price::double*size::double) q,
         sum(size::double) sz, count(*) nf, bool_or(is_liquidation) liq, max(coalesce(twap_id,0)) twap
- from read_parquet('{R}/data/raw/xyz/fills/2026-10-*.parquet')
- where coin='xyz:SP500' and crossed and timestamp >= '2026-10-08' and timestamp < '2026-10-22'
+ from read_parquet('{R}/data/raw/xyz/fills/*.parquet')
+ where coin='xyz:SP500' and crossed and timestamp >= '{WIN.T0}' and timestamp < '{WIN.T1}'
  group by 1,2 order by t0""").df()
 o['s'] = np.where(o.side == 'buy', 1, -1)
 def mid_before(t):  # last change strictly before t
@@ -38,7 +41,7 @@ o = o.join(sig, on='day').join(V, on='day')
 o.drop(columns=['side']).to_parquet(f"{O}/orders.parquet")
 # metaorders: same account, same sign, consecutive taker orders with gap <= G; sign flip or gap ends it
 G = 300e9
-o = o.sort_values(['a', 't0']).reset_index(drop=True)
+o = o.sort_values(['a', 't0', 'order_id'], kind='mergesort').reset_index(drop=True)
 new = (o.a != o.a.shift()) | (o.s != o.s.shift()) | ((o.t0 - o.t1.shift()) > G)
 o['mo'] = new.cumsum()
 M = o.groupby('mo').agg(a=('a', 'first'), s=('s', 'first'), t0=('t0', 'min'), t1=('t1', 'max'), q=('q', 'sum'),

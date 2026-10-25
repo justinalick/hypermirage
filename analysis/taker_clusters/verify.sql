@@ -6,8 +6,8 @@ select 'bbo sanity' k, count(*) n, sum(case when best_bid>=best_ask then 1 else 
 create temp table f as
  select timestamp::timestamp ts, price::double px, price::double*size::double nt, case when side='buy' then 1 else -1 end s,
    list_contains(getvariable('t1'), address) t1, fee::double fee, trade_id
- from read_parquet('data/raw/xyz/fills/2026-10-*.parquet')
- where coin='xyz:SP500' and crossed and timestamp >= '2026-10-08' and timestamp < '2026-10-22';
+ from read_parquet('data/raw/xyz/fills/*.parquet')
+ where coin='xyz:SP500' and crossed and timestamp >= strptime(getenv('HM_START'), '%Y%m%d') and timestamp < strptime(getenv('HM_END'), '%Y%m%d') + INTERVAL 1 DAY;
 create temp table m as
  select f.*, b0.mid m0, b1.mid m1, b10.mid m10, b60.mid m60 from f
  asof left join b b0 on f.ts > b0.t

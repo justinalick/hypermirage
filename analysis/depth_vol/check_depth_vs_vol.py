@@ -9,6 +9,9 @@ Usage: .venv/bin/python check_depth_vs_vol.py MINUTES.parquet
 import sys
 import glob
 import duckdb
+import sys as _sys; _sys.path.insert(0, "scripts")
+import window as _WIN
+_WIN.atlas_only("checks/spotcheck/depth_vol_verify.py")   # first-version figure: its text describes the atlas window
 
 src = sys.argv[1]
 L2 = "data/raw/xyz/book_1m/SP500/*.parquet"

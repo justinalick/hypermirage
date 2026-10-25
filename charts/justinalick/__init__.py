@@ -311,6 +311,16 @@ def zero(ax):
     ax.axhline(0, color=C["faint"], lw=1, zorder=1)
 
 
+def fit(lo, hi, values, pad):
+    """Axis limits (lo, hi), widened only as far as the plotted values need: a side moves (to the value
+    plus pad) only when a value falls outside it."""
+    import numpy as _np
+    v = _np.asarray(values, float); v = v[_np.isfinite(v)]
+    if not len(v):
+        return lo, hi
+    return (lo if v.min() >= lo else v.min() - pad, hi if v.max() <= hi else v.max() + pad)
+
+
 def _knockout():
     """Ground-colored backing so a label reads over fills, grids and lines."""
     return dict(boxstyle="square,pad=0.22", fc=C["ground"], ec="none")

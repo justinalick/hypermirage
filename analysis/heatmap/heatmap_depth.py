@@ -1,4 +1,4 @@
-"""Median resting depth within 10 bps of mid by UTC hour x weekday, xyz:SP500, 2026-10-08..21.
+"""Median resting depth within 10 bps of mid by UTC hour x weekday, xyz:SP500, every day of the run window (scripts/window.py).
 
 Input: per-minute depth net of partial fills (depth_minutes_v2.parquet, written by depth_check.py).
 Usage: .venv/bin/python analysis/heatmap/heatmap_depth.py <out.png>
@@ -7,38 +7,39 @@ Prints the session medians that the subtitle quotes, so the text can be checked 
 import sys
 import duckdb
 import numpy as np
+import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
+sys.path.insert(0, "scripts")
+import window as WIN
 
 SRC = "data/derived/heatmap/depth_minutes_v2.parquet"
 COL = "d10_net"
 OUT = sys.argv[1]
-CLOSED_SQL = """((isodow(t) BETWEEN 1 AND 4 AND hour(t) = 21) OR (isodow(t) = 5 AND hour(t) >= 21)
-                 OR isodow(t) = 6 OR (isodow(t) = 7 AND hour(t) < 22))"""
 
 con = duckdb.connect()
 con.execute("SET TimeZone='UTC'")
-df = con.sql(f"""SELECT isodow(t) dow, hour(t) h, median({COL}) / 1e6 m, count(*) n
-                 FROM '{SRC}' GROUP BY 1, 2""").df()
-n_min, n_days = con.sql(f"SELECT count(*), count(DISTINCT t::DATE) FROM '{SRC}'").fetchall()[0]
-assert len(df) == 168 and df.n.min() == df.n.max() == 120 and n_days == 14, df.describe()
+m = con.sql(f"SELECT t, {COL} v FROM '{SRC}' ORDER BY t").df()
+m["session"] = WIN.session(m.t)
+n_min, n_days = len(m), m.t.dt.date.nunique()
+# the hour-of-week grid is a regular week (UTC): holiday dates are left out of it
+wk = m[~m.t.dt.strftime("%Y-%m-%d").isin(WIN.HOLIDAYS)]
+df = wk.groupby([wk.t.dt.dayofweek + 1, wk.t.dt.hour]).v.agg(["median", "size"]).rename_axis(["dow", "h"]).reset_index()
+df["m"] = df["median"] / 1e6; df["n"] = df["size"]
+assert len(df) == 168, df.describe()
+if WIN.IS_ATLAS:
+    assert df.n.min() == df.n.max() == 120 and n_days == 14, df.describe()
 Z = df.pivot(index="dow", columns="h", values="m").sort_index().to_numpy()  # rows Mon..Sun
 
-# Session medians over minutes (UTC; US daylight time throughout the window)
-sess = con.sql(f"""
-  SELECT CASE
-           WHEN isodow(t) BETWEEN 1 AND 4 AND hour(t) = 21                     THEN 'break'
-           WHEN {CLOSED_SQL}                                                   THEN 'weekend'
-           WHEN isodow(t) BETWEEN 1 AND 5
-                AND hour(t) * 60 + minute(t) >= 810 AND hour(t) * 60 + minute(t) < 1200 THEN 'cash'
-           ELSE 'futures open, cash closed' END session,
-         count(*) AS n_minutes, median({COL}) / 1e6 AS median_musd
-  FROM '{SRC}' GROUP BY 1 ORDER BY 3 DESC""").df()
+# Session medians over minutes (scripts/window.py clock: daylight time and holidays handled)
+names = {"break": "break", "closed": "weekend", "cash": "cash", "overnight": "futures open, cash closed"}
+sess = (m.groupby(m.session.map(names)).v.agg(n_minutes="size", median_musd=lambda v: v.median() / 1e6)
+        .rename_axis("session").reset_index().sort_values("median_musd", ascending=False))
 print(sess.round(2).to_string(index=False))
 med = dict(zip(sess.session, sess.median_musd))
-open_all = con.sql(f"SELECT median({COL}) / 1e6 FROM '{SRC}' WHERE NOT {CLOSED_SQL}").fetchall()[0][0]
+open_all = m.v[m.session.isin(["cash", "overnight"])].median() / 1e6
 print(f"break / futures-open {med['break'] / open_all:.2f}, weekend / futures-open "
       f"{med['weekend'] / open_all:.2f}, cash / other futures-open "
       f"{med['cash'] / med['futures open, cash closed']:.2f}")
@@ -68,22 +69,20 @@ ax.tick_params(length=0, labelsize=9.5)
 for s in ax.spines.values():
     s.set_visible(False)
 top = ax.secondary_xaxis("top")
-top.set_xticks(range(0, 25, 3), [f"{((h - 4) % 12) or 12}{'am' if (h - 4) % 24 < 12 else 'pm'}"
-                                  for h in range(0, 25, 3)])  # EDT = UTC-4
+OFF = int(WIN.utc_offset_hours())                      # -4 in daylight time (EDT), -5 in standard time
+TZN = "EDT" if OFF == -4 else "EST"
+top.set_xticks(range(0, 25, 3), [f"{((h + OFF) % 12) or 12}{'am' if (h + OFF) % 24 < 12 else 'pm'}"
+                                  for h in range(0, 25, 3)])
 top.tick_params(length=0, labelsize=9, colors=INK3)
-top.set_xlabel("New York time (EDT)", fontsize=9, color=INK3, labelpad=5)
+top.set_xlabel(f"New York time ({TZN})", fontsize=9, color=INK3, labelpad=5)
 for s in top.spines.values():
     s.set_visible(False)
 
-# US cash session: Mon-Fri 13:30-20:00 UTC
-ax.add_patch(plt.Rectangle((13.5, 0.04), 6.5, 4.92, fill=False, ec=INK, lw=1.8, zorder=5))
-# CME equity futures closed: daily 21:00-22:00 UTC break, Fri 21:00 to Sun 22:00 UTC.
+# US cash session: Mon-Fri 9:30-16:00 New York time (13:30-20:00 UTC in daylight time)
+ax.add_patch(plt.Rectangle((9.5 - OFF, 0.04), 6.5, 4.92, fill=False, ec=INK, lw=1.8, zorder=5))
+# CME equity futures closed or halted in a regular week (daily break, weekend), from the window's clock.
 # Outline the union of closed cells by drawing every cell edge that borders an open cell.
-closed = np.zeros((7, 24), bool)
-closed[0:4, 21] = True
-closed[4, 21:] = True
-closed[5, :] = True
-closed[6, :22] = True
+closed = WIN.closed_weeks_grid()
 for r in range(7):
     for c in range(24):
         if not closed[r, c]:
@@ -102,9 +101,11 @@ cb.ax.set_yticklabels([f"${v}M" for v in [0, 3, 6, 9, 12, 15, 18]])
 
 fig.text(0.075, 0.935, "S&P 500 perp liquidity on Hyperliquid runs on the futures clock",
          fontsize=17, weight="bold", color=INK)
+fall = lambda r: f"{1 - r:.0%}"
 fig.text(0.075, 0.888, "Median resting depth within 10 bps of mid, both sides, xyz:SP500. "
-         "It falls by about two thirds in the daily hour\nCME equity futures "
-         "pause and by about three quarters over the weekend. US cash hours add only about a sixth.",
+         f"It falls by about {fall(med['break'] / open_all)} in the daily hour\nCME equity futures "
+         f"pause and by about {fall(med['weekend'] / open_all)} when futures are closed. US cash hours add "
+         f"{med['cash'] / med['futures open, cash closed'] - 1:+.0%}.",
          fontsize=10.5, color=INK2, va="top", linespacing=1.4)
 
 lx, ly = 0.075, 0.095
@@ -117,11 +118,13 @@ fig.add_artist(plt.Rectangle((lx2, ly), 0.022, 0.022, transform=fig.transFigure,
                              ec=RED, lw=1.6, ls=(0, (3, 2))))
 fig.text(lx2 + 0.03, ly + 0.011, "CME equity futures closed (daily 5 to 6pm ET break, weekend)",
          fontsize=9.5, color=INK2, va="center")
+l2 = con.sql("SELECT avg((abs(rep_net_usd / l2_usd - 1) <= 0.02)::INT) FROM 'data/derived/heatmap/l2_check.parquet' WHERE l2_usd > 0").fetchall()[0][0]
+hol = f" Holidays ({len(WIN.HOLIDAYS)}) are left out of the grid." if WIN.HOLIDAYS else ""
 fig.text(0.075, 0.035,
-         f"Sample: {n_days} days, Oct 8 to 21, 2026 (each weekday twice), {n_min:,} one-minute "
-         "snapshots; each cell is the median of 120. Depth from an order-level book replay, net of\n"
-         "partial fills; within 2% of the exchange's top-20 L2 snapshots in 99% of them. "
-         "Source: Hydromancer Reservoir / node data. Two weeks, one market.",
+         f"Sample: {n_days} days, {WIN.label()}, {n_min:,} one-minute snapshots; each cell is the median of "
+         f"{df.n.min():,} to {df.n.max():,}.{hol} Depth from an order-level book replay, net of\n"
+         f"partial fills; within 2% of the exchange's top-20 L2 snapshots in {l2:.0%} of them. "
+         "Source: Hydromancer Reservoir / node data. One market.",
          fontsize=8.5, color=INK3, va="bottom", linespacing=1.45)
 fig.text(0.975, ly + 0.011, "@justinalick", fontsize=9.5, color=INK2, ha="right", va="center",
          weight="bold")

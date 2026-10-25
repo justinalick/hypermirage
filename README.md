@@ -137,7 +137,7 @@ copied back:
 bash scripts/tokyo/launch.sh <your-ip> <your-ssh-public-key>
 # on the instance (bootstrap asks for your read-only node-data credentials and config)
 git clone https://github.com/justinalick/hypermirage && bash hypermirage/scripts/tokyo/bootstrap.sh
-cd hypermirage && scripts/node_extract_day.sh order_statuses 20261008 20261021
+cd hypermirage && scripts/node_extract_day.sh order_statuses 20261008 20261021   # at most 31 days per call
 # locally: copy the extracts back into data/l4/ (scripts/tokyo/remote.sh pull), then terminate
 bash scripts/tokyo/teardown.sh
 ```
@@ -158,13 +158,32 @@ python3 -m venv .venv
 ## Reproduce
 
 ```bash
-./run.sh fetch        # Reservoir fills + 1m L2, 2026-10-08..21
-./run.sh pipeline     # per day: scripts/lifecycle.py (one row per order) and scripts/touch.py (book replay)
+./run.sh fetch        # Reservoir fills + 1m L2 for the window
+./run.sh pipeline     # per day: order lifecycles (scripts/lifecycle.py), book replay (scripts/touch.py),
+                      # top of book with sizes and same-block amend pairs; days already built are skipped
 ./run.sh analysis     # all topics, or e.g. ./run.sh analysis survival markouts
-./run.sh charts       # PNGs in out/
+./run.sh charts       # PNGs in data/derived/runs/<start>_<end>/out/
 ./run.sh headline     # headline numbers next to the values printed in the atlas
 ./run.sh checks       # independent recomputes (different code paths) of the published numbers
 ```
+
+**Window.** Every step runs on the UTC days from `HM_START` to `HM_END` (YYYYMMDD, inclusive). The default is
+2026-10-08 to 2026-10-21, the window of the two-week atlas, where the scripts assert that the published
+numbers come out again. Any other window, for example `HM_START=20260425 HM_END=20261024 ./run.sh all`,
+prints its own numbers next to the atlas values instead. Per-day files (lifecycles, replayed book, top of
+book, amend pairs) are shared by all windows; everything else is written to a per-window folder,
+`data/derived/runs/<start>_<end>/`, which links the window's days and the code, so windows never overwrite
+each other and a file glob sees the window's days only.
+
+**Market clock.** Sessions come from `scripts/window.py`, computed in exchange local time, so daylight
+saving time is handled: CME equity index futures trade Sunday 17:00 to Friday 16:00 Chicago time with a
+daily halt 16:00 to 17:00, the NYSE cash session is 09:30 to 16:00 New York time, and US exchange holidays
+are listed with their early CME halt (a Monday holiday reopens at 17:00 Chicago the same day, a Friday
+holiday stays closed into the weekend). Futures-closed hours therefore include holiday afternoons, and
+hour-of-week charts leave holiday dates out. `./run.sh checks clock` tests each listed halt against the
+replayed book (depth within 10 bps falls at the halt). A window with an NYSE holiday that has no CME
+schedule in the table is refused. Charts drawn on a UTC hour grid assume one UTC offset across the window
+and refuse a window that crosses a daylight saving change.
 
 | Atlas section | Topic | Main scripts | Chart |
 |---|---|---|---|
@@ -184,7 +203,10 @@ python3 -m venv .venv
 | Queue position and fills | `queue` | `analysis/queue_replay.py`, `analysis/queue_fill.sql`, `analysis/queue_km.py` | `charts/queue_fill.py` |
 | Cancels and amends | `cancels` | `analysis/cancels/` | `charts/cancels_1.py` to `charts/cancels_3.py` |
 
-`charts/og_card.py` draws the report's link-preview image (1200 x 630); it uses no data.
+`charts/og_card.py` draws the report's link-preview image (1200 x 630) with the window, the order count and
+the impact ratio from the run's outputs. The first-version figure scripts kept in `analysis/` (for example
+`analysis/impact/plot.py`) describe the atlas window in their text and refuse other windows; `charts/` has
+the current version of each.
 
 `report/` holds the published page (`report/index.html`, `report/og-xyz-sp500-v4.png`). `node scripts/build.mjs` builds it into
 `dist/` with its security headers for justinalick.com/projects/hypermirage; the build fails if the page would load anything
@@ -199,9 +221,13 @@ Notes:
   median barely moves.
 - Maker concentration and taker clusters merge only sub-accounts that are declared on Hyperliquid, read from
   the public info API (`userRole`, `subAccounts`). The API returns current links, so a later run can differ
-  slightly from the atlas.
-- `analysis/funding/fetch_api.py` pulls from the public API up to the time it runs; the atlas used a pull
-  made on 2026-10-23, so later pulls extend the sample.
+  slightly from the atlas. Requests go through `analysis/hl_api.py`: about one per second per IP, retried on
+  rate limits, and cached in `data/derived/hl_api/` for every window; a request that keeps failing stops
+  the run instead of being recorded as an account with no role.
+- `analysis/funding/fetch_api.py` pulls from the public API up to the time it runs and merges each pull into
+  the saved files, because the 1h candle endpoint only serves the most recent ~5,000 hours. The funding
+  analysis uses every print from the first one to the end of the window; the atlas window keeps the end of
+  its own pull, made on 2026-10-23.
 - The plotting kit in `charts/justinalick/` bundles IBM Plex and Silkscreen, both under the SIL Open Font
   License.
 

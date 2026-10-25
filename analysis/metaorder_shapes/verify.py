@@ -1,13 +1,18 @@
 """Independent checks of build/cluster/impact outputs (recomputed from raw fills and the replayed BBO where possible)."""
 import duckdb, numpy as np, pandas as pd, json
+import sys
+sys.path.insert(0, "scripts")
+import window as WIN
 R = "."; O = f"{R}/data/derived/metaorder_shapes"
 M = pd.read_parquet(f"{O}/metaorders_shape.parquet"); C = pd.read_parquet(f"{O}/curves.parquet"); L = pd.read_parquet(f"{O}/labels.parquet")
 o = pd.read_parquet(f"{R}/data/derived/impact/orders.parquet")
 ok = lambda name, cond: print(('PASS ' if cond else 'FAIL ') + name)
-# 1. metaorder count with liquidations included must equal the impact thread's 141,552
-oa = o.sort_values(['a', 't0']).reset_index(drop=True)
+# 1. metaorder count with liquidations included must equal the impact thread's (metaorders.parquet; 141,552 in the atlas)
+oa = o.sort_values(['a', 't0', 'order_id'], kind='mergesort').reset_index(drop=True)
 n_all = ((oa.a != oa.a.shift()) | (oa.s != oa.s.shift()) | ((oa.t0 - oa.t1.shift()) > 300e9)).sum()
-ok(f"metaorders incl. liquidations = {n_all} (impact thread 141552)", n_all == 141552)
+n_imp = len(pd.read_parquet(f"{R}/data/derived/impact/metaorders.parquet"))
+ok(f"metaorders incl. liquidations = {n_all} (impact thread {n_imp})", n_all == n_imp)
+WIN.expect("metaorders incl. liquidations", int(n_all), 141552)
 ol = o[~o.liq]
 ok("notional conserved", abs(M.q.sum() - ol.q.sum()) < 1e-3 * ol.q.sum())
 ok("child-order count conserved", M.n.sum() == len(ol))
@@ -25,9 +30,9 @@ ok("pre60 matches", np.allclose(s.s.values * (m0 - bm[np.searchsorted(bt, s.t0.v
 # 3. curves: recompute 300 random metaorders from raw fills (first-fill time per order, notional = sum px*sz)
 print('checks 1-2 done', flush=True)
 fills = con.execute(f"""select address a, order_id, min(epoch_ns(timestamp::timestamp))::bigint t, sum(price::double*size::double) q
-  from read_parquet('{R}/data/raw/xyz/fills/2026-10-*.parquet') where coin='xyz:SP500' and crossed
-  and timestamp >= '2026-10-08' and timestamp < '2026-10-22' group by 1,2""").df()
-olm = ol.sort_values(['a', 't0']).reset_index(drop=True)
+  from read_parquet('{R}/data/raw/xyz/fills/*.parquet') where coin='xyz:SP500' and crossed
+  and timestamp >= '{WIN.T0}' and timestamp < '{WIN.T1}' group by 1,2""").df()
+olm = ol.sort_values(['a', 't0', 'order_id'], kind='mergesort').reset_index(drop=True)
 olm['mo'] = ((olm.a != olm.a.shift()) | (olm.s != olm.s.shift()) | ((olm.t0 - olm.t1.shift()) > 300e9)).cumsum()
 olm = olm.merge(fills, on=['a', 'order_id'])
 ok("raw-fill notional per order matches orders.parquet", np.allclose(olm.q_x, olm.q_y))
@@ -39,7 +44,7 @@ for mo in C.sample(300, random_state=2).index:
     bad += not np.allclose(ref, C.loc[mo].values)
 ok(f"curves match raw-fill recompute ({300 - bad}/300)", bad == 0)
 # 4. DTW: textbook full-matrix DP with band vs vectorized version
-src = open(f"{O}/cluster.py").read(); ns = {'np': np, 'K': 21}
+src = open("analysis/metaorder_shapes/cluster.py").read(); ns = {'np': np, 'K': 21}
 exec(src[src.index('def dtw'):src.index('def pdist')], ns)   # the exact dtw() used for clustering
 def dtw_ref(a, b, w):
     n = len(a); D = np.full((n + 1, n + 1), np.inf); D[0, 0] = 0

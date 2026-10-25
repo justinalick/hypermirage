@@ -48,6 +48,9 @@ axR.text(15.5,4.5,'Overnight: ≈0%',color=INK,fontsize=12,ha='left',va='center'
 axR.text(33,-6,'Cash hours: −8%',color=INK,fontsize=12,ha='right',va='top')
 # legend row
 from matplotlib.lines import Line2D
+import sys as _sys; _sys.path.insert(0, "scripts")
+import window as _WIN
+_WIN.atlas_only("charts/depth_vol.py")   # first-version figure: its text describes the atlas window
 hs=[Line2D([0],[0],marker='o',color=COL[g],lw=2.4,markersize=9,markeredgecolor=SURF) for g in ['cash','overnight','closed']]
 fig.legend(hs,[LAB[g] for g in ['cash','overnight','closed']],loc='upper left',bbox_to_anchor=(0.06,0.845),ncol=3,frameon=False,fontsize=13,labelcolor=INK,handlelength=2.2,columnspacing=2.2)
 fig.text(0.065,0.94,'Depth seems to rise with volatility. Control for the clock and it falls.',fontsize=23,fontweight='bold',color=INK)

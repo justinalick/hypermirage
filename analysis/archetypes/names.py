@@ -1,6 +1,6 @@
 """Plain-language cluster names and coarse groups from each cluster's median raw features."""
 import pandas as pd
-def name_clusters(f, lab):
+def name_clusters(f, lab, n_days=14):
     f = f.assign(cl=lab); g = f[f.cl >= 0].groupby('cl')
     m = g.median(numeric_only=True); tw = g.twap_share.mean()
     names, grp = {}, {}
@@ -17,7 +17,7 @@ def name_clusters(f, lab):
         if r.maker_share > 0.2: tags.append("some making")
         if r.weekend_share > 0.5: tags.append("weekend")
         elif r.cash_share > 0.45: tags.append("US cash hours")
-        if r.days_active >= 12: tags.append("daily")
+        if r.days_active >= 12 / 14 * n_days: tags.append("daily")
         if r.med_order_usd > 10000: tags.append("large orders")
         elif r.med_order_usd < 300: tags.append("small orders")
         if r.turnover > 120: tags.append("high turnover")

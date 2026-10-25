@@ -6,21 +6,27 @@ import numpy as np, pandas as pd, matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 import justinalick as ja
+sys.path.insert(0, "scripts")
+import window as WIN
 
 df = pd.read_parquet("data/derived/heatmap/depth_minutes_v2.parquet", columns=["t", "d10_net"])
-t = df.t; dow = t.dt.dayofweek + 1; h = t.dt.hour; mm = h * 60 + t.dt.minute     # isodow 1 = Mon
-closed = ((dow <= 4) & (h == 21)) | ((dow == 5) & (h >= 21)) | (dow == 6) | ((dow == 7) & (h < 22))
-brk = (dow <= 4) & (h == 21)
-cash = (dow <= 5) & (mm >= 810) & (mm < 1200)
-sess = np.select([brk, closed, cash], ["break", "weekend", "cash"], "other")
+s_ = WIN.session(df.t)                                  # holiday-aware CME / NYSE clock
+sess = np.select([s_ == "break", s_ == "closed", s_ == "cash"], ["break", "weekend", "cash"], "other")
+closed = (s_ == "break") | (s_ == "closed")
 med = df.d10_net.groupby(sess).median() / 1e6
 open_all = df.d10_net[~closed].median() / 1e6
 print(med.round(2).to_dict(), round(open_all, 2), round(med["break"] / open_all, 2), round(med["weekend"] / open_all, 2))
-assert (round(med["cash"], 1), round(med["other"], 1), round(med["break"], 1), round(med["weekend"], 1)) == (15.4, 13.2, 4.7, 3.4)
+WIN.expect("heatmap session medians $M: cash, other, break, closed",
+           [round(med["cash"], 1), round(med["other"], 1), round(med["break"], 1), round(med["weekend"], 1)], [15.4, 13.2, 4.7, 3.4])
 r_brk, r_wk = med["break"] / open_all, med["weekend"] / open_all
-g = df.assign(dow=dow, h=h).groupby(["dow", "h"]).d10_net
-assert g.size().min() == g.size().max() == 120 and g.ngroups == 168
+wk = df[~df.t.dt.strftime("%Y-%m-%d").isin(WIN.HOLIDAYS)]  # regular weeks: holidays left out of the grid
+g = wk.assign(dow=wk.t.dt.dayofweek + 1, h=wk.t.dt.hour).groupby(["dow", "h"]).d10_net
+assert g.ngroups == 168
+if WIN.IS_ATLAS:
+    assert g.size().min() == g.size().max() == 120
+NMIN, NMAX = g.size().min(), g.size().max()
 Z = (g.median() / 1e6).unstack().sort_index().to_numpy()   # rows Mon..Sun
+OFF = int(WIN.utc_offset_hours()); TZN = "EDT" if OFF == -4 else "EST"
 
 fig, _ax = ja.figure("wide", "night")
 _ax.remove()
@@ -38,17 +44,18 @@ ax.set_yticks(np.arange(7) + 0.5, ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Su
 ax.set_xticks(range(0, 25, 3), [f"{v:02d}:00" for v in range(0, 25, 3)])
 ax.spines["bottom"].set_visible(False)
 top = ax.secondary_xaxis("top")
-top.set_xticks(range(0, 25, 3), [f"{((v - 4) % 12) or 12}{'am' if (v - 4) % 24 < 12 else 'pm'}" for v in range(0, 25, 3)])
+top.set_xticks(range(0, 25, 3), [f"{((v + OFF) % 12) or 12}{'am' if (v + OFF) % 24 < 12 else 'pm'}" for v in range(0, 25, 3)])
 top.tick_params(length=0, colors=ja.C["faint"], labelsize=10)
 for s in top.spines.values():
     s.set_visible(False)
 LB = 11
-top.set_xlabel("hour of day, New York time (EDT)", color=ja.C["muted"], family=ja.MONO, fontsize=LB, labelpad=8)
+top.set_xlabel(f"hour of day, New York time ({TZN})", color=ja.C["muted"], family=ja.MONO, fontsize=LB, labelpad=8)
 
-# US cash session, Mon-Fri 13:30-20:00 UTC: solid ink box
-ax.add_patch(plt.Rectangle((13.5, 0.04), 6.5, 4.92, fill=False, ec=ja.C["ink"], lw=2.5, zorder=5))
-# CME equity futures closed: daily 21-22 UTC break, Fri 21:00 to Sun 22:00 UTC: dashed outline
-cl = np.zeros((7, 24), bool); cl[0:4, 21] = True; cl[4, 21:] = True; cl[5, :] = True; cl[6, :22] = True
+# US cash session, Mon-Fri 9:30-16:00 New York time (13:30-20:00 UTC in daylight time): solid ink box
+ax.add_patch(plt.Rectangle((9.5 - OFF, 0.04), 6.5, 4.92, fill=False, ec=ja.C["ink"], lw=2.5, zorder=5))
+# CME equity futures closed or halted in a regular week (daily break, weekend), from the window's clock: dashed outline
+cl = WIN.closed_weeks_grid()
+brk_col = 16 - OFF + 1                                  # daily halt, 4 to 5pm Chicago = 5 to 6pm New York
 for r in range(7):
     for c in range(24):
         if not cl[r, c]:
@@ -61,14 +68,14 @@ for r in range(7):
             ax.plot(*seg, color=ja.C["actual"], lw=2.2, ls=(0, (3, 2)), zorder=6, clip_on=False)
 
 # the LED: the daily futures break (Wed 21:00 UTC)
-ax.plot([21.5], [2.5], marker="s", ms=0, mfc=ja.C["signal"], mec=ja.PUNK["ink"], mew=1.5, zorder=10)
+ax.plot([brk_col + 0.5], [2.5], marker="s", ms=0, mfc=ja.C["signal"], mec=ja.PUNK["ink"], mew=1.5, zorder=10)
 def cell_label(x, y, text, role, **kw):   # no box on cells: text color picked for contrast
     t = ja.note_at(ax, x, y, text, role, size=11)
     t.set_bbox(None); t.set_weight("semibold"); t.set(**kw)
     return t
 
 
-cell_label(11.0, 5.5, f"weekend: ${med['weekend']:.1f}M, {r_wk:.2f}x of futures-open hours", "actual")
+cell_label(11.0, 5.5, f"{'weekend' if not WIN.HOLIDAYS else 'futures closed'}: ${med['weekend']:.1f}M, {r_wk:.2f}x of futures-open hours", "actual")
 cell_label(23.0, 1.0, f"break\n${med['break']:.1f}M\n{r_brk:.2f}x", "ground")
 cell_label(16.75, 0.5, f"US cash hours: ${med['cash']:.1f}M", "ground")
 cell_label(6.0, 0.5, f"other futures-open hours: ${med['other']:.1f}M", "ground")
@@ -87,6 +94,9 @@ ax.annotate("dashed: CME equity futures closed (daily 5 to 6pm ET, weekend)", (0
             color=ja.C["actual"])
 
 ja.finish(fig, f"Depth follows CME hours: {r_brk:.2f}x in the daily break", hl=f"{r_brk:.2f}x",
-          subtitle="xyz:SP500 perp on Hyperliquid, Oct 8 to 21, 2026, median depth within 10 bps of mid",
-          source=f"Data: Hydromancer Reservoir / node data. Book replay net of fills; {len(df):,} one-minute snapshots, 120 per cell.")
+          subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, median depth within 10 bps of mid",
+          source=(f"Data: Hydromancer Reservoir / node data. Book replay net of fills; {len(df):,} one-minute snapshots, 120 per cell."
+                  if NMIN == NMAX else
+                  f"Data: Hydromancer Reservoir / node data. Book replay net of fills; {len(df):,} one-minute snapshots; "
+                  f"{NMIN:,} to {NMAX:,} per cell, {len(WIN.HOLIDAYS)} holidays left out."))
 ja.save(fig, "out/heatmap.png")

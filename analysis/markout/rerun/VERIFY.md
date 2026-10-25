@@ -24,7 +24,7 @@ match to within 0.01 bps. The violin hourly means match exactly.
    hours at 1s and 67% at 10s and 1m. The method note says 16 hour values were clipped at +-2 bps. The
    final chart clips at +-1.6 bps, which hides 30 values; the arrows on the chart show the right counts.
 4. Reproducibility: the step that adds block times to the mid was never saved, and the scripts read from a
-   temporary folder. It is now saved as prep_bbo_t.sql, with paths fixed in this folder.
+   temporary folder. It is now saved as prep_bbo_t.py (one day at a time), with paths fixed in this folder.
 5. Negligible: 14 one-sided book rows give a NaN mid that the original counts as a 0 markout.
 
 ## Rerun

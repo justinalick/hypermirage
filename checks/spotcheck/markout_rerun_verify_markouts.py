@@ -27,6 +27,8 @@ Memory: one day of order statuses at a time; DuckDB capped at 1.5 GB, 2 threads.
 import argparse, json, os
 import duckdb
 import numpy as np
+sys.path.insert(0, "scripts")
+import window as WIN
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--root", default=".")
@@ -35,7 +37,7 @@ a = ap.parse_args()
 ROOT = a.root
 MK = f"{ROOT}/data/derived/markout/rerun"
 OUT = "data/checks/spotcheck/out_" + "markout_verify_res.json"
-DAYS = [f"202610{d:02d}" for d in range(8, 22)]
+DAYS = WIN.DAYS
 H = [0, 0.5, 1, 2, 5, 10, 20, 30, 60, 120, 300]
 
 con = duckdb.connect()
@@ -50,7 +52,7 @@ select timestamp::timestamp ts, price::double px, size::double sz, price::double
        case when side='buy' then 1 else -1 end s, crossed, order_id, trade_id, tx_hash,
        fee::double fee, coalesce(builder_fee::double, 0) bfee
 from read_parquet([{fills}])
-where coin='xyz:SP500' and timestamp >= '2026-10-08' and timestamp < '2026-10-22'""")
+where coin='xyz:SP500' and timestamp >= '{WIN.T0}' and timestamp < '{WIN.T1}'""")
 c = con.execute("""select count(*) filter (where crossed), count(*) filter (where not crossed),
     count(distinct trade_id) filter (where crossed), count(distinct trade_id) filter (where not crossed)
     from legs""").fetchone()
@@ -83,7 +85,7 @@ for d in DAYS:
     print("day", d, "done", flush=True)
 con.execute("drop table if exists blk")
 
-ref = f"{MK}/bbo_t.parquet"
+ref = f"{ROOT}/data/derived/markout/bbo_t.parquet"   # written by prep_bbo_t.py
 r = con.execute(f"""select count(*), count(o.block), max(abs(epoch_us(o.t)-epoch_us(n.t))),
      sum((o.best_bid is distinct from n.best_bid or o.best_ask is distinct from n.best_ask)::int),
      (select count(*) from '{ref}'), sum((n.t is null)::int), sum((n.best_bid is null or n.best_ask is null)::int)

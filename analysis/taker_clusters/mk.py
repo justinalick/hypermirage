@@ -1,5 +1,8 @@
 """Taker markouts at 1/10/60s by taker cluster (sub-accounts under master) and by ES session."""
-import duckdb, numpy as np, json
+import duckdb, numpy as np, pandas as pd, json
+import sys
+sys.path.insert(0, "scripts")
+import window as WIN
 D = "data/derived/taker_clusters"
 B = "data/derived/markout/bbo_t.parquet"
 R = "data/raw/xyz/fills"
@@ -9,23 +12,22 @@ bt, bmid = [b[k] for k in b]; bt = bt.astype(np.int64)
 f = con.execute(f"""
  with t as (select epoch_ns(timestamp::timestamp)::bigint ft, price::double px, size::double sz,
         case when side='B' or side='buy' then 1 else -1 end s, order_id, trade_id, address
-   from read_parquet('{R}/2026-10-*.parquet')
-   where coin='xyz:SP500' and crossed and timestamp >= '2026-10-08' and timestamp < '2026-10-22'),
+   from read_parquet('{R}/*.parquet')
+   where coin='xyz:SP500' and crossed and timestamp >= '{WIN.T0}' and timestamp < '{WIN.T1}'),
  cm as (select * from read_csv('{D}/cluster_map.csv')),
- mk as (select trade_id, any_value(address) maddr from read_parquet('{R}/2026-10-*.parquet')
-   where coin='xyz:SP500' and not crossed and timestamp >= '2026-10-08' and timestamp < '2026-10-22' group by 1)
+ mk as (select trade_id, any_value(address) maddr from read_parquet('{R}/*.parquet')
+   where coin='xyz:SP500' and not crossed and timestamp >= '{WIN.T0}' and timestamp < '{WIN.T1}' group by 1)
  select ft, px, sz, s, t.cluster c, coalesce(m2.cluster, mk.maddr) mc, extract(dow from to_timestamp(ft/1e9) at time zone 'UTC') dow,
    extract(hour from to_timestamp(ft/1e9) at time zone 'UTC')*60+extract(minute from to_timestamp(ft/1e9) at time zone 'UTC') mod
  from (t join cm using(address)) t left join mk using(trade_id) left join cm m2 on m2.address=mk.maddr order by ft""").fetchnumpy()
 ft = f['ft'].astype(np.int64); px, sz, s = f['px'], f['sz'], f['s'].astype(float); nt = px*sz
 c = f['c'].astype(str); mc = f['mc'].astype(str); dow = f['dow'].astype(int); mod = f['mod'].astype(int)
 print("side check", np.unique(s, return_counts=True))
-# ES session (CME Globex, EDT => UTC-4): open Sun 22:00 UTC to Fri 21:00 UTC, daily break 21:00-22:00 UTC; RTH 13:30-20:00 UTC Mon-Fri
+# ES session from the scripts/window.py clock (CME Globex in Chicago time, NYSE hours, holidays):
+# ES closed = weekends, holiday closures and the daily halt; Cash hours = NYSE session
 wk = (dow >= 1) & (dow <= 5)
-brk = (mod >= 21*60) & (mod < 22*60)
-closed = (dow == 6) | ((dow == 0) & (mod < 22*60)) | ((dow == 5) & (mod >= 21*60)) | (wk & brk)
-rth = wk & (mod >= 13*60+30) & (mod < 20*60)
-sess = np.where(closed, "ES closed", np.where(rth, "Cash hours", "ES overnight"))
+_s = WIN.session(pd.to_datetime(ft, unit="ns", utc=True))
+sess = np.where(np.isin(_s, ["closed", "break"]), "ES closed", np.where(_s == "cash", "Cash hours", "ES overnight"))
 i0 = np.searchsorted(bt, ft, 'left') - 1; ok = i0 >= 0; end = bt[-1]
 H = [0, 1, 10, 60]; X = {}
 for h in H:

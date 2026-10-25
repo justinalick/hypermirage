@@ -1,32 +1,38 @@
-"""Per-minute book features for regime clustering, xyz:SP500 2026-10-08..21.
+"""Per-minute book features for regime clustering, xyz:SP500, every day of the run window (scripts/window.py).
 depth: replayed notional within 10 bps of mid (offhours_depth_minutes.parquet, last block of minute).
 From replayed L1 (ofi/l1): time-weighted spread (bps), time-weighted |L1 size imbalance|,
-realized vol = sqrt(sum of squared 5s log mid returns within the minute), annualized."""
-import glob
+realized vol = sqrt(sum of squared 5s log mid returns within the minute), annualized.
+Plain numpy arrays and per-minute bincounts keep memory to a few GB over long windows."""
+import duckdb
 import numpy as np
 import pandas as pd
 
 R = "data/derived"
-l1 = pd.concat([pd.read_parquet(p) for p in sorted(glob.glob(f"{R}/ofi/l1/*.parquet"))]).sort_values(["t_ns", "block"])
-# each day file ends with an empty-book sentinel row (NaN prices, zero sizes) at ~23:59:59; drop it
-l1 = l1[l1.bid_px.notna() & l1.ask_px.notna()].reset_index(drop=True)
-t = l1.t_ns.to_numpy()
+# each day file ends with an empty-book sentinel row (NaN prices, zero sizes) at ~23:59:59; dropped here
+L = duckdb.sql(f"""SELECT t_ns, bid_px, ask_px, bid_sz, ask_sz FROM read_parquet('{R}/ofi/l1/*.parquet')
+                   WHERE bid_px IS NOT NULL AND ask_px IS NOT NULL AND NOT isnan(bid_px) AND NOT isnan(ask_px)
+                   ORDER BY t_ns, block""").fetchnumpy()
+t = L["t_ns"].astype(np.int64)
 MIN = 60_000_000_000
 nxt = np.r_[t[1:], t[-1]]
-dur = np.minimum(nxt, (t // MIN + 1) * MIN) - t  # clip at minute edge (remainder of minute after last state is dropped)
-mid = (l1.ask_px + l1.bid_px).to_numpy() / 2
-spr = (l1.ask_px - l1.bid_px).to_numpy() / mid * 1e4
-tot = (l1.bid_sz + l1.ask_sz).to_numpy()
-simb = np.where(tot > 0, (l1.bid_sz - l1.ask_sz).to_numpy() / np.where(tot > 0, tot, 1), np.nan)
-df = pd.DataFrame(dict(mn=t // MIN, dur=dur.astype(float), spr=spr, simb=simb, aimb=np.abs(simb)))
-df = df[df.dur > 0]
-w = df.dur
+dur = (np.minimum(nxt, (t // MIN + 1) * MIN) - t).astype(float)  # clip at minute edge (remainder after last state dropped)
+mid = (L["ask_px"] + L["bid_px"]) / 2
+spr = (L["ask_px"] - L["bid_px"]) / mid * 1e4
+tot = L["bid_sz"] + L["ask_sz"]
+simb = np.where(tot > 0, (L["bid_sz"] - L["ask_sz"]) / np.where(tot > 0, tot, 1), np.nan)
+k = dur > 0
+mn = t[k] // MIN; m0 = mn.min(); mi = mn - m0; nm = int(mi.max()) + 1
+w = dur[k]
+B = lambda v: np.bincount(mi, np.nan_to_num(v), nm)   # per-minute sums; NaN terms count as 0 (as in a pandas sum)
+ws, cnt = B(w), np.bincount(mi, minlength=nm)
+have = cnt > 0
 agg = pd.DataFrame({
-    "spread_bps": (df.spr * w).groupby(df.mn).sum() / w.groupby(df.mn).sum(),
-    "abs_imb": (df.aimb * w).groupby(df.mn).sum() / w.groupby(df.mn).sum(),
-    "signed_imb": (df.simb * w).groupby(df.mn).sum() / w.groupby(df.mn).sum(),
-    "n_states": df.groupby("mn").size(),
-})
+    "spread_bps": B(spr[k] * w)[have] / ws[have],
+    "abs_imb": B(np.abs(simb[k]) * w)[have] / ws[have],
+    "signed_imb": B(simb[k] * w)[have] / ws[have],
+    "n_states": cnt[have],
+}, index=pd.Index(np.arange(nm)[have] + m0, name="mn"))
+del L, dur, spr, tot, simb, k, mn, mi, w
 # 5s grid: last mid strictly before each edge
 S5 = 5_000_000_000
 edges = np.arange((t[0] // S5 + 1) * S5, t[-1] + 1, S5)

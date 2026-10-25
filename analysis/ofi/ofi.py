@@ -1,4 +1,4 @@
-"""Cont-Kukanov-Stoikov OFI on xyz:SP500, 2026-10-08..21.
+"""Cont-Kukanov-Stoikov OFI on xyz:SP500, every day of the run window (scripts/window.py).
 Event OFI e_n from consecutive top-of-book states (l1/*.parquet), summed into fixed UTC bins of
 length h. Mid return over a bin = 1e4 * log change of the mid at bin edges (mid at edge T = last
 book state with t < T; OFI of a bin uses only states with t in [T-h, T)).
@@ -6,7 +6,10 @@ Contemporaneous: r_k on OFI_k. Predictive: r_{k+1} on OFI_k (and r_k), walk-forw
 fit on all earlier days, score the next day, OOS R2 vs a zero forecast.
 Normalization: OFI_k / D_k, D_k = mean L1 depth (bid+ask)/2 over the previous 30 minutes (trailing).
 """
-import glob, json, numpy as np, duckdb
+import glob, json, numpy as np, pandas as pd, duckdb
+import sys
+sys.path.insert(0, "scripts")
+import window as WIN
 ROOT = "."; OUT = f"{ROOT}/data/derived/ofi"
 con = duckdb.connect()
 L = con.execute(f"""select block, t_ns, bid_px, bid_sz, ask_px, ask_sz, regexp_extract(filename,'(\\d{{8}})',1) d
@@ -26,11 +29,11 @@ spr_bps = (ap - bp) / ((ap + bp) / 2) * 1e4
 cume = np.r_[0, np.cumsum(e)]
 # signed taker volume (trade imbalance), contracts
 F = con.execute(f"""select epoch_ns(timestamp::timestamp) fn, case when side='buy' then 1 else -1 end * size::double s
-  from read_parquet('{ROOT}/data/raw/xyz/fills/2026-10-*.parquet') where coin='xyz:SP500' and crossed
-  and timestamp >= '2026-10-08' and timestamp < '2026-10-22' order by fn""").fetchnumpy()
+  from read_parquet('{ROOT}/data/raw/xyz/fills/*.parquet') where coin='xyz:SP500' and crossed
+  and timestamp >= '{WIN.T0}' and timestamp < '{WIN.T1}' order by fn""").fetchnumpy()
 fn, fs = F["fn"].astype(np.int64), F["s"]; cumf = np.r_[0, np.cumsum(fs)]
 DAY = 86400 * 10**9
-t0 = (t[0] // DAY) * DAY; t1 = t0 + 14 * DAY
+t0 = (t[0] // DAY) * DAY; t1 = t0 + WIN.N_DAYS * DAY
 HZ = [1, 5, 10, 30, 60, 300]
 # trailing 30-min depth: time-weighted mean of dep over [T-30m, T)
 dt = np.diff(np.r_[t, t[-1]]); cumdep = np.r_[0, np.cumsum(dep * dt)]; cumt = np.r_[0, np.cumsum(dt)]
@@ -58,7 +61,7 @@ for h in HZ:
     day = ((E[:-1] - t0) // DAY).astype(int)
     hr = ((E[:-1] % DAY) // (3600 * 10**9)).astype(int)
     wd = ((E[:-1] // DAY + 3) % 7)                     # 0=Mon (1970-01-01 was a Thursday)
-    rth = (wd < 5) & (E[:-1] % DAY >= 13.5 * 3600e9) & (E[:-1] % DAY < 20 * 3600e9)
+    rth = WIN.cash(pd.to_datetime(E[:-1], unit="ns", utc=True))   # NYSE session (holiday- and DST-aware clock)
     v = np.isfinite(r) & np.isfinite(D) & (D > 0)
     x = ofi / np.where(D > 0, D, np.nan)
     o = {"n_bins": int(v.sum())}
@@ -72,17 +75,23 @@ for h in HZ:
         o[f"cont_ofi_r2_{nm}"] = float(r2(r[w], Xm @ b, np.full(w.sum(), r[w].mean()))); o[f"n_{nm}"] = int(w.sum())
     # CKS-style: per half-hour window OLS on raw OFI, median R2 (windows with >= 20 bins)
     if h <= 60:
-        win = (E[:-1] - t0) // (1800 * 10**9); rs = []
-        for wv in np.unique(win[v]):
-            w = v & (win == wv)
-            if w.sum() >= 20 and ofi[w].std() > 0 and r[w].std() > 0:
-                rs.append(np.corrcoef(ofi[w], r[w])[0, 1] ** 2)
+        # per-window squared correlation from per-window sums (one pass, same value as np.corrcoef)
+        win = ((E[:-1] - t0) // (1800 * 10**9)).astype(np.int64)
+        wv_, a_, b_ = win[v], ofi[v].astype(float), r[v].astype(float)
+        nb = int(wv_.max()) + 1
+        S = lambda z: np.bincount(wv_, z, nb)
+        n_, sa, sb = S(np.ones_like(a_)), S(a_), S(b_)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            ma, mb = sa / n_, sb / n_
+            va = S(a_ * a_) / n_ - ma * ma; vb = S(b_ * b_) / n_ - mb * mb; cab = S(a_ * b_) / n_ - ma * mb
+            keep = (n_ >= 20) & (va > 1e-12 * np.maximum(1, ma * ma)) & (vb > 1e-12 * np.maximum(1, mb * mb))
+            rs = list((cab[keep] ** 2) / (va[keep] * vb[keep]))
         o["cont_halfhour_r2_median"] = float(np.median(rs)); o["cont_halfhour_r2_iqr"] = [float(np.percentile(rs, 25)), float(np.percentile(rs, 75))]; o["n_halfhours"] = len(rs)
     # predictive: y = r_{k+1}; features at k: x_k, r_k
     y = r[1:]; xk = x[:-1]; rk = r[:-1]; vv = v[1:] & v[:-1]; dk = day[1:]
     oos = {"ofi": [], "lagret": [], "both": []}; per = {k: [] for k in oos}; yall = {k: [] for k in oos}
     hit = []; pred_mag = []
-    for td in range(1, 14):
+    for td in range(1, WIN.N_DAYS):
         tr, te = vv & (dk < td), vv & (dk == td)
         if te.sum() < 10: continue
         for k, cols in (("ofi", [xk]), ("lagret", [rk]), ("both", [xk, rk])):

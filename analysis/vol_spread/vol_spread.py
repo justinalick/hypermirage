@@ -1,4 +1,4 @@
-"""Quoted spread and depth vs realized volatility, xyz:SP500, 2026-10-08..21, controlling for the clock.
+"""Quoted spread and depth vs realized volatility, xyz:SP500, every day of the run window (scripts/window.py), controlling for the clock.
 
 Inputs: data/derived/offhours/offhours_depth_minutes.parquet (mid, d10 per minute, replayed book) and
 data/derived/vol_spread/spread_minutes.parquet (time-weighted quoted spread per minute).
@@ -8,7 +8,10 @@ Minutes are split by whether CME index futures are open (cash + overnight) or cl
 Mon-Thu 21:00 hour), and binned into deciles of relative vol within each group.
 Writes vol_spread_deciles.parquet and prints top vs bottom decile gaps with day-bootstrap 90% CIs.
 """
+import sys
 import numpy as np, pandas as pd, duckdb
+sys.path.insert(0, "scripts")
+import window as WIN
 
 R = "data/derived/"
 OUT = R + "vol_spread/"
@@ -17,12 +20,12 @@ m = duckdb.sql(f"""SELECT d.t, d.mid, d.d10, s.tw_spread_bps sp
     LEFT JOIN '{R}vol_spread/spread_minutes.parquet' s USING (t) ORDER BY d.t""").df()
 m["r"] = np.log(m.mid).diff() * 1e4
 m["rv"] = m.r.rolling(15, min_periods=12).std() * np.sqrt(365 * 1440) / 100
-dow, h = m.t.dt.day_of_week, m.t.dt.hour
-wk = ((dow == 4) & (h >= 21)) | (dow == 5) | ((dow == 6) & (h < 22))
-m["es"] = np.where(wk | ((dow < 4) & (h == 21)), "closed", "open")
+h = m.t.dt.hour
+es = WIN.es_state(m.t)                    # holiday-aware CME clock: open, break, closed
+wk = es == "closed"
+m["es"] = np.where(es != "open", "closed", "open")
 m["hod"] = h.astype(str) + np.where(wk, "w", "d")
-fri = m.t - pd.to_timedelta((dow - 4) % 7, unit="D")
-m["day"] = np.where(wk, "W" + fri.dt.strftime("%m%d"), m.t.dt.strftime("%m%d"))
+m["day"] = WIN.block(m.t)                 # one key per UTC day, one per closure (weekend, holiday)
 m = m.dropna(subset=["rv", "sp"])
 m = m[m.rv > 0].copy()
 for c in ["rv", "sp", "d10"]:
@@ -38,8 +41,9 @@ for es, g in m.groupby("es"):
     days = g.day.unique()
     base = g.groupby("q").agg(rv=("rv_rel", "median"), sp=("sp_rel", "median"), dep=("d10_rel", "median"))
     boots = {k: [] for k in ["sp", "dep"]}
+    by = {d: v for d, v in g.groupby("day")}
     for _ in range(1000):
-        s = pd.concat([g[g.day == d] for d in rng.choice(days, len(days))])
+        s = pd.concat([by[d] for d in rng.choice(days, len(days))])
         b = s.groupby("q").agg(sp=("sp_rel", "median"), dep=("d10_rel", "median"))
         for k in boots:
             boots[k].append(b[k])
@@ -54,12 +58,17 @@ for es, g in m.groupby("es"):
     base["es"] = es
     rows.append(base.reset_index())
 pd.concat(rows).to_parquet(OUT + "vol_spread_deciles.parquet")
+import json
+json.dump({"n_minutes": int(len(m)), "n_minutes_by_es": {e: int(len(g)) for e, g in m.groupby("es")},
+           "n_days": {e: int(g.day.nunique()) for e, g in m.groupby("es")}},
+          open(OUT + "vol_spread_meta.json", "w"))
 # published values: gap and 90% CI, top vs bottom volatility decile (atlas and README)
 want = {("open", "sp"): (18.9, 14.7, 24.1), ("open", "dep"): (-1.2, -4.9, 2.4),
         ("closed", "sp"): (56.8, 10.5, 135.2), ("closed", "dep"): (-19.2, -29.4, -3.0)}
-bad = {k: tuple(round(v, 1) for v in got[k]) for k in want if any(abs(a - b) > 0.15 for a, b in zip(got[k], want[k]))}
-assert not bad, f"published gaps or CIs not reproduced: {bad}"
-print("published gaps and 90% CIs reproduced")
+for k in want:
+    WIN.expect(f"vol_spread gap and 90% CI {k}", [round(v, 1) for v in got[k]], list(want[k]), tol=0.15)
+if WIN.IS_ATLAS:
+    print("published gaps and 90% CIs reproduced")
 print("minute-level corr (rel): ", {es: (round(np.corrcoef(g.rv_rel, g.sp_rel)[0, 1], 3),
       round(np.corrcoef(g.rv_rel, g.d10_rel)[0, 1], 3)) for es, g in m.groupby("es")})
 print("raw medians:", m.groupby("es").agg(sp=("sp", "median"), d10=("d10", "median"), rv=("rv", "median"), n=("rv", "size")).round(3).to_dict())

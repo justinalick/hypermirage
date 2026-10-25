@@ -1,7 +1,8 @@
-"""Fit GMM + HMM regimes, select K, stability checks. xyz:SP500 2026-10-08..21, 1-min bins."""
+"""Fit GMM + HMM regimes, select K, stability checks. xyz:SP500, every day of the run window (scripts/window.py), 1-min bins."""
 import json, sys
 import numpy as np, pandas as pd
-sys.path.insert(0, "analysis/regimes")
+sys.path.insert(0, "analysis/regimes"); sys.path.insert(0, "scripts")
+import window as WIN
 from hmm import *
 
 f = pd.read_parquet(f"{D}/features.parquet").sort_values("t").reset_index(drop=True)
@@ -26,8 +27,8 @@ for K in range(2, 7):
     res["bic"][K] = m["bic"]; res["gmm_bic"][K] = m["gmm"].bic(X)
     print(K, "HMM BIC", round(m["bic"]), "GMM BIC", round(m["gmm"].bic(X)), "iters", m["iters"], flush=True)
 
-# stability per K: seeds and week halves
-half = (f.t < "2026-10-15").to_numpy()
+# stability per K: seeds and the two halves of the window (in the two-week atlas: the two weeks)
+half = (f.t < pd.Timestamp(WIN.split_day())).to_numpy()
 stab = {}
 for K in range(2, 7):
     ref = models[K]; pref = viterbi(X, ref, seg)

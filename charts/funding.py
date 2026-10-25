@@ -7,14 +7,18 @@ import numpy as np, pandas as pd, matplotlib; matplotlib.use("Agg")
 import matplotlib.dates as md
 from matplotlib.ticker import FuncFormatter
 import justinalick as ja
+sys.path.insert(0, "scripts")
+import window as WIN
 
 D = Path("data/derived/funding")
 INTEREST, CLAMP, DIV = 1e-4, 3e-4, 16
+END = pd.Timestamp(WIN.API_END, tz="UTC")
 
 
 def load_funding():
     f = pd.DataFrame(json.load(open(D / "sp500_funding_api.json")))
     f["t"] = pd.to_datetime(f.time, unit="ms", utc=True).dt.floor("h")
+    f = f[f.t <= END].copy()
     assert not f.t.duplicated().any()
     f["fund"] = f.fundingRate.astype(float)
     f["prem"] = f.premium.astype(float)
@@ -27,15 +31,13 @@ def load_candles():
     c = pd.DataFrame(json.load(open(D / "candles.json")))
     c["t"] = pd.to_datetime(c.t, unit="ms", utc=True)
     c = c.drop_duplicates("t", keep="last").set_index("t").sort_index()
-    return c[["o", "c"]].astype(float)
+    return c[c.index <= END][["o", "c"]].astype(float)
 
 
 def ny_session(ny):
-    dow, hr = ny.dt.day_of_week, ny.dt.hour
-    mins = hr * 60 + ny.dt.minute
-    es_closed = (((dow == 4) & (hr >= 17)) | (dow == 5) | ((dow == 6) & (hr < 18)) | ((dow < 4) & (hr == 17)))
-    cash = (dow < 5) & (mins >= 570) & (mins < 960)
-    return np.where(es_closed, "es_closed", np.where(cash, "cash", "es_open_other"))
+    """Session of the hour starting at ny, read from the scripts/window.py clock at the hour's start."""
+    es = WIN.es_state(ny)
+    return np.where(es != "open", "es_closed", np.where(WIN.cash(ny), "cash", "es_open_other"))
 
 
 def forward_returns(f, c):
@@ -77,8 +79,9 @@ def axlab(ax, xl, yl):
 bps = FuncFormatter(lambda v, _: f"{v:+.0f}" if v else "0")
 
 # A: premium by hour of week (New York time)
-how = f.ny.dt.day_of_week * 24 + f.ny.dt.hour
-g = f.prem_bps.groupby(how)
+fw = f[~f.ny.dt.strftime("%Y-%m-%d").isin(list(WIN.ES_HOLIDAYS))]   # regular weeks: holidays left out
+how = fw.ny.dt.day_of_week * 24 + fw.ny.dt.hour
+g = fw.prem_bps.groupby(how)
 med = g.median()
 A.axhspan(lo_band, hi_band, color=ja.C["panel"], lw=0, zorder=0)
 for day in range(5):
@@ -86,7 +89,7 @@ for day in range(5):
 ja.gap(A, med.index, g.quantile(0.25), g.quantile(0.75))
 ja.zero(A)
 ja.line(A, med.index, med.values, "actual", lw=2.5)
-A.set_xlim(0, 168); A.set_ylim(-6.5, 4.5); A.set_yticks([-6, -4, -2, 0, 2, 4]); A.yaxis.set_major_formatter(bps)
+A.set_xlim(0, 168); A.set_ylim(*ja.fit(-6.5, 4.5, np.r_[g.quantile(0.25), g.quantile(0.75)], 0.5)); A.set_yticks([-6, -4, -2, 0, 2, 4]); A.yaxis.set_major_formatter(bps)
 A.set_xticks([i * 24 + 12 for i in range(7)]); A.set_xticklabels(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"])
 A.grid(False, axis="x")
 def key_row(ax, items, size=LB, gap=3):
@@ -112,7 +115,7 @@ dm = f.prem_bps.resample("D").median()
 B.axhspan(lo_band, hi_band, color=ja.C["panel"], lw=0, zorder=0)
 B.bar(dm.index, dm, width=1, color=np.where(dm < zero_fund, ja.C["actual"], ja.C["faint"]), lw=0, zorder=2)
 ja.zero(B)
-B.set_ylim(-12, 4.5); B.set_yticks([-10, -5, 0]); B.yaxis.set_major_formatter(bps)
+B.set_ylim(*ja.fit(-12, 4.5, dm, 1)); B.set_yticks([-10, -5, 0]); B.yaxis.set_major_formatter(bps)
 B.xaxis.set_major_locator(md.MonthLocator(bymonth=[4, 6, 8, 10])); B.xaxis.set_major_formatter(md.DateFormatter("%b"))
 t = ja.label_at(B, pd.Timestamp("2026-08-20", tz="UTC"), -11.1, f"below {zero_fund:.0f} bps: shorts paid", "actual", dy=0, size=LB); t.set_bbox(None)
 ja.panel_title(B, f"daily median premium  ({(f.prem < 0).mean():.0%} of hours < 0)", size=LB)
@@ -123,7 +126,7 @@ cf = f.fund.cumsum() * 100
 years = len(f) / (24 * 365)
 ja.zero(Cx)
 ja.line(Cx, cf.index, cf.values, "actual", lw=2.5)
-Cx.set_ylim(-1.3, 0.15); Cx.set_yticks([-1.2, -0.8, -0.4, 0]); Cx.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.1f}%"))
+Cx.set_ylim(*ja.fit(-1.3, 0.15, cf, 0.1)); Cx.set_yticks([-1.2, -0.8, -0.4, 0]); Cx.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.1f}%"))
 Cx.xaxis.set_major_locator(md.MonthLocator(bymonth=[4, 6, 8, 10])); Cx.xaxis.set_major_formatter(md.DateFormatter("%b"))
 ja.end_label(Cx, cf.index, cf.values, f"long received {-cf.iloc[-1]:.2f}%, about {-cf.iloc[-1] / years:.1f}%/yr", "actual", dy=14, size=LB)
 ja.panel_title(Cx, "funding paid by a constant 1x long", size=LB)
@@ -135,7 +138,8 @@ Dq.bar(range(5), gq.r, color=[ja.C["actual"]] + [ja.C["faint"]] * 4, width=0.6, 
 Dq.errorbar(range(5), gq.r, yerr=2 * gq.se * np.sqrt(24), fmt="none", ecolor=ja.C["muted"], elinewidth=1.2, capsize=0, zorder=3)
 ja.zero(Dq)
 Dq.set_xticks(range(5)); Dq.set_xticklabels([f"{p:+.1f}" for p in gq.p]); Dq.grid(False, axis="x")
-Dq.set_ylim(-28, 62); Dq.set_yticks([-20, 0, 20, 40]); Dq.yaxis.set_major_formatter(bps)
+_e = 2 * gq.se * np.sqrt(24)
+Dq.set_ylim(*ja.fit(-28, 62, np.r_[gq.r - _e, gq.r + _e], 4)); Dq.set_yticks([-20, 0, 20, 40]); Dq.yaxis.set_major_formatter(bps)
 ja.label_at(Dq, 0.35, gq.r.iloc[0] + 3, f"{gq.r.iloc[0]:+.0f} bps", "actual", dy=0, ha="left", size=LB)
 ja.note_at(Dq, 2.8, 50, "bars: 2 SE, widened for overlap", role="faint", size=LB)
 ja.panel_title(Dq, "deepest fifth next 24h: up on average...", size=LB)
@@ -153,14 +157,30 @@ E.bar(x - 0.19, q0.r, 0.36, color=ja.C["actual"], zorder=2)
 E.bar(x + 0.19, base, 0.36, color=ja.C["faint"], zorder=2)
 ja.zero(E)
 E.set_xticks(x); E.set_xticklabels([m[3:] for m in months]); E.grid(False, axis="x")
-E.set_ylim(-45, 165); E.set_yticks([0, 50, 100, 150]); E.yaxis.set_major_formatter(bps)
+ehi = ja.fit(-45, 165, np.r_[q0.r, base], 15)[1]
+E.set_ylim(ja.fit(-45, 165, np.r_[q0.r, base], 10)[0], ehi); E.set_yticks([0, 50, 100, 150]); E.yaxis.set_major_formatter(bps)
 for txt_, role_, x_ in (("deepest fifth", "actual", 1.6), ("all hours", "faint", 4.25)):
-    t = ja.label_at(E, x_, 110, txt_, role_, dy=0, ha="left", size=LB); t.set_bbox(None); t.set_va("center")
-ja.note_at(E, 4.3, 148, f"daily test: corr {corr:.2f}, t {tstat:.2f}, n {len(daily)}", size=LB)
-ja.panel_title(E, "...but mostly from Mar and Apr", size=LB)
-axlab(E, f"month, 2026; {len(d):,} h from Mar 29", "mean 24h return, bps")
+    t = ja.label_at(E, x_, ehi - 55, txt_, role_, dy=0, ha="left", size=LB); t.set_bbox(None); t.set_va("center")
+ja.note_at(E, 4.3, ehi - 17, f"daily test: corr {corr:.2f}, t {tstat:.2f}, n {len(daily)}", size=LB)
+# months that contribute most of the deepest fifth's summed 24h return (positive months only)
+contrib = (q0.r * q0.n).clip(lower=0).dropna()
+contrib = contrib / contrib.sum()
+top = contrib.sort_values(ascending=False)
+lead = list(top.index[:(top.cumsum() < 0.6).sum() + 1])
+mname = lambda m: pd.Timestamp(f"2026-{m[:2]}-01").strftime("%b")
+print("funding panel E: deepest-fifth return share by month", contrib.round(2).to_dict())
+if WIN.IS_ATLAS:
+    etitle = "...but mostly from Mar and Apr"          # the published panel title
+elif len(lead) <= 2:
+    etitle = f"...but mostly from {' and '.join(mname(m) for m in sorted(lead))}"
+else:
+    etitle = f"...in {int((q0.r > base).sum())} of {len(months)} months"
+ja.panel_title(E, etitle, size=LB)
+axlab(E, f"month, 2026; {len(d):,} h from {d.index.min():%b} {d.index.min().day}", "mean 24h return, bps")
 
-ja.finish(fig, "xyz:SP500 trades about 3 bps under oracle while ES is open", hl="about 3 bps",
-          subtitle=f"xyz:SP500 perp on Hyperliquid, Mar 18 to Oct 23, 2026, {len(f):,} funding hours",
-          source="Data: Hyperliquid public API (fundingHistory, 1h candles), Mar 18 to Oct 23, 2026. No ES prices.")
+span = f"{f.index.min():%b} {f.index.min().day} to {f.index.max():%b} {f.index.max().day}, {f.index.max().year}"
+WIN.expect("funding: median premium while ES trades (bps)", round(open_med, 1), -3.2, tol=0.05)
+ja.finish(fig, f"xyz:SP500 trades about {-open_med:.0f} bps under oracle while ES is open", hl=f"about {-open_med:.0f} bps",
+          subtitle=f"xyz:SP500 perp on Hyperliquid, {span}, {len(f):,} funding hours",
+          source=f"Data: Hyperliquid public API (fundingHistory, 1h candles), {span}. No ES prices.")
 ja.save(fig, "out/funding.png")

@@ -6,6 +6,8 @@ import numpy as np, pandas as pd, matplotlib; matplotlib.use("Agg")
 from matplotlib.patches import Patch
 from matplotlib.ticker import FuncFormatter
 import justinalick as ja
+sys.path.insert(0, "scripts")
+import window as WIN
 
 D = "data/derived/cancels"
 DIST = ["1 improves touch", "2 at touch", "3 within 1 bp", "4 1-5 bps", "5 5-25 bps", "6 over 25 bps"]
@@ -49,7 +51,7 @@ ser = {}
 for dr, role in [("toward touch", "model"), ("away from touch", "actual")]:
     s = t[t.dir == dr].groupby("ticks").n.sum().sort_index(); s = 100 * s / s.sum(); ser[dr] = s
     ja.line(bx, s.index, s.values, role, lw=2.5, marker="o", ms=5)
-bx.set_xlim(0, 21); bx.set_ylim(0, 42); bx.set_xticks([1, 5, 10, 15, 20]); bx.set_xticklabels(["1", "5", "10", "15", "20+"])
+bx.set_xlim(0, 21); bx.set_ylim(*ja.fit(0, 42, [s.max() for s in ser.values()], 3)); bx.set_xticks([1, 5, 10, 15, 20]); bx.set_xticklabels(["1", "5", "10", "15", "20+"])
 bx.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.0f}%"))
 ja.label_at(bx, 3.2, 33, "away from touch", "actual", dy=0, ha="left", size=11)
 ja.label_at(bx, 3.2, 25, "toward touch", "model", dy=0, ha="left", size=11)
@@ -58,8 +60,10 @@ ja.panel_title(bx, "size of price-only amends", size=11)
 bx.set_xlabel("ticks moved (0.1 = ~0.13 bp)", color=ja.C["muted"], family=ja.MONO, fontsize=11, labelpad=6)
 bx.set_ylabel("share of amends, %", color=ja.C["muted"], family=ja.MONO, fontsize=11, labelpad=6)
 
-ja.finish(fig, f"Half of {tot.sum()/1e6:.0f}M cancels are same-block replacements", hl="Half",
-          subtitle=(f"xyz:SP500 perp on Hyperliquid, Oct 8 to 21, 2026, {100*mix[K[1]]:.0f}% identical, "
+rep = 1 - mix[K[0]]                                   # replaced in the same block
+share = "Half" if abs(rep - 0.5) < 0.05 else f"{rep:.0%}"
+ja.finish(fig, f"{share} of {tot.sum()/1e6:.0f}M cancels are same-block replacements", hl=share,
+          subtitle=(f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, {100*mix[K[1]]:.0f}% identical, "
                     f"{100*(mix[K[2]]+mix[K[3]]):.0f}% price only"),
           source="Data: Hydromancer Reservoir / node data. Replacement = same account and side, same block.")
 ja.save(fig, "out/cancels_2.png")

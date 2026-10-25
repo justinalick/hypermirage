@@ -8,6 +8,7 @@ Outputs: stats printed to stdout, charts written next to this file.
 Run: .venv/bin/python analysis/funding/funding_premium.py
 """
 import json
+import sys
 from pathlib import Path
 
 import matplotlib
@@ -18,8 +19,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+sys.path.insert(0, "scripts")
+import window as WIN
+
 HERE = Path("data/derived/funding"); HERE.mkdir(parents=True, exist_ok=True)
-WIN = ("2026-10-08 01:00", "2026-10-22 00:00")  # funding hours covering Oct 8..21 UTC
+WINDOW = (f"{WIN.T0} 01:00", f"{WIN.T1} 00:00")  # funding prints settling the window's hours
 
 # Funding rule, fitted from the data and checked below:
 #   hourly funding = (premium + clamp(INTEREST - premium, -CLAMP, +CLAMP)) / DIV
@@ -31,6 +35,7 @@ def load_funding():
     f = pd.DataFrame(json.load(open(HERE / "sp500_funding_api.json")))
     # API stamps arrive a few hundred ms after the hour; the print at hour T settles the hour ending T
     f["t"] = pd.to_datetime(f.time, unit="ms", utc=True).dt.floor("h")
+    f = f[f.t <= pd.Timestamp(WIN.API_END, tz="UTC")].copy()
     assert not f.t.duplicated().any()
     hours = pd.date_range(f.t.min(), f.t.max(), freq="h")
     assert len(hours) == len(f), "missing funding hours"
@@ -48,6 +53,7 @@ def load_candles():
     c["t"] = pd.to_datetime(c.t, unit="ms", utc=True)
     # pagination overlap returns the boundary bar twice; the later copy is the completed bar
     c = c.drop_duplicates("t", keep="last").set_index("t").sort_index()
+    c = c[c.index <= pd.Timestamp(WIN.API_END, tz="UTC")]
     hours = pd.date_range(c.index.min(), c.index.max(), freq="h")
     assert len(hours) == len(c), "missing candle hours"
     return c[["o", "c"]].astype(float)
@@ -61,14 +67,11 @@ def check_rule(f):
 
 
 def ny_session(ny):
-    """cash = 09:30-16:00 ET weekdays; es_closed = Fri 17:00 to Sun 18:00 ET and the daily 17:00-18:00 ET halt."""
-    dow, hr = ny.dt.day_of_week, ny.dt.hour
-    mins = hr * 60 + ny.dt.minute
-    es_closed = (
-        ((dow == 4) & (hr >= 17)) | (dow == 5) | ((dow == 6) & (hr < 18)) | ((dow < 4) & (hr == 17))
-    )
-    cash = (dow < 5) & (mins >= 570) & (mins < 960)
-    return np.where(es_closed, "es_closed", np.where(cash, "cash", "es_open_other"))
+    """Session of the hour starting at ny (scripts/window.py clock, read at the hour's start): es_closed =
+    futures closed or in the daily halt (weekends, holiday closures, 17:00-18:00 ET Mon-Thu), cash = NYSE
+    session hours, es_open_other = the rest."""
+    es = WIN.es_state(ny)
+    return np.where(es != "open", "es_closed", np.where(WIN.cash(ny), "cash", "es_open_other"))
 
 
 def summarize(x):
@@ -104,15 +107,15 @@ def main():
     f["session"] = ny_session(f.ny)
     pd.set_option("display.width", 200)
 
-    w = f.loc[WIN[0] : WIN[1]]
+    w = f.loc[WINDOW[0] : WINDOW[1]]
     print(f"\nfunding: {f.index.min()} to {f.index.max()}, {len(f)} hours; window {len(w)} hours")
-    for name, x in (("full", f), ("14d", w)):
+    for name, x in (("full", f), (f"window {WIN.label()}", w)):
         print(f"\n== {name}")
         print(summarize(x).round(4).to_string())
         print(x.groupby("session").apply(summarize).round(3).to_string())
 
-    # hour-of-week profile, Mon-Thu by NY hour
-    mt = f[f.ny.dt.day_of_week < 4]
+    # hour-of-week profile, Mon-Thu by NY hour (exchange holidays left out of hour-of-week profiles)
+    mt = f[(f.ny.dt.day_of_week < 4) & ~f.ny.dt.strftime("%Y-%m-%d").isin(list(WIN.ES_HOLIDAYS))]
     prof = mt.prem_bps.groupby(mt.ny.dt.hour).median()
     print("\nMon-Thu median premium by NY hour:\n" + prof.round(2).to_string())
 

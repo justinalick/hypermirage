@@ -1,5 +1,5 @@
 """Recompute per-minute resting depth for xyz:SP500 with partial fills netted out, and validate the
-book replay against Reservoir's 1m L2 snapshots (top 20 levels per side). 2026-10-08..21.
+book replay against Reservoir's 1m L2 snapshots (top 20 levels per side), every day of the run window (scripts/window.py).
 
 Resting size of an order at block B (fills are maker legs from Reservoir, matched on order_id):
   order ended with a terminal event:  remaining at that event (last_sz, 0 if filled) + fills after B
@@ -10,6 +10,8 @@ Outputs (to argv[1]):
 """
 import sys
 import duckdb
+sys.path.insert(0, "scripts")
+import window as WIN
 
 R = "."
 OUT = sys.argv[1]
@@ -20,8 +22,7 @@ con.execute("""CREATE TABLE mins (t TIMESTAMP, mid DOUBLE, d5 DOUBLE, d10 DOUBLE
 con.execute("""CREATE TABLE l2chk (day VARCHAR, blk BIGINT, side VARCHAR, n_lvls INT, l2_usd DOUBLE,
                rep_usd DOUBLE, rep_net_usd DOUBLE)""")
 
-for d in range(8, 22):
-    day, iso = f"202610{d:02d}", f"2026-10-{d:02d}"
+for day, iso in zip(WIN.DAYS, WIN.ISO):
     con.execute(f"""CREATE OR REPLACE TEMP TABLE clock AS
         SELECT block_number blk, min(epoch_ms(block_time::TIMESTAMP)) ms
         FROM read_parquet('{R}/data/l4/order_statuses/xyz_SP500/{day}/*.parquet') GROUP BY 1""")

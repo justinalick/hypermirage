@@ -3,6 +3,9 @@ import numpy as np, pandas as pd, json
 from sklearn.cluster import HDBSCAN
 from sklearn.preprocessing import RobustScaler, StandardScaler
 from sklearn.metrics import adjusted_rand_score
+import sys
+sys.path.insert(0, "scripts")
+import window as WIN
 O = "data/derived/archetypes"
 f = pd.read_parquet(f"{O}/features.parquet")
 f = f[f.n_orders.notna()].reset_index(drop=True)
@@ -18,7 +21,7 @@ X = pd.DataFrame({
  'alo_share': f.alo_share, 'frontend_share': f.frontend_share, 'trigger_share': f.trigger_share,
  'builder_share': f.builder_share, 'twap_share': f.twap_share,
  'cash_share': f.cash_share, 'weekend_share': f.weekend_share, 'hour_entropy': f.hour_entropy,
- 'days_active': f.days_active/14,
+ 'days_active': f.days_active/WIN.N_DAYS,
  'markout60': f.markout60_bps.clip(-3, 3),
  'log_turnover': np.log10(f.turnover.clip(lower=0.1)),
  'net_flow_ratio': f.net_flow_ratio,

@@ -4,7 +4,7 @@ SET memory_limit = '1500MB';
 SET threads = 4;
 
 CREATE OR REPLACE TABLE q AS
-SELECT * FROM read_parquet('data/derived/queue/2026????.parquet') WHERE day >= '20261009';
+SELECT * FROM read_parquet('data/derived/queue/2026????.parquet') WHERE day > getenv('HM_START');   -- day 1 is warm-up
 
 -- outcomes of orders that carried past their open day
 CREATE OR REPLACE TABLE co AS

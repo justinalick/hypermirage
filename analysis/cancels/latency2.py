@@ -62,3 +62,8 @@ for d in sys.argv[1:]:
         rows.append((d, kind, mv, kk if kk > 0 else None, n))
     print(d, len(ev), sum(cnt.values()), flush=True)
 pd.DataFrame(rows, columns=["day", "ev", "mv", "k", "n"]).to_parquet(f"{ROOT}/data/derived/cancels/latency.parquet")
+# mean block time over the days, so the chart can convert block counts to seconds
+mpb = [con.execute(f"SELECT any_value(ms_per_block) FROM '{ROOT}/data/derived/lifecycle_touch/xyz_SP500/{d}.parquet'").fetchone()[0]
+       for d in sys.argv[1:]]
+import json
+json.dump({"ms_per_block": float(np.mean(mpb)), "days": len(mpb)}, open(f"{ROOT}/data/derived/cancels/latency_meta.json", "w"))

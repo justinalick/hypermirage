@@ -1,8 +1,10 @@
 """Cache the aggregates of analysis/concentration_chart.py (same queries) to a small json.
 No addresses are written. DuckDB capped at 2 GB / 2 threads per the brief."""
-import json, duckdb
+import json, sys, duckdb
+sys.path.insert(0, "scripts")
+import window as WIN
 ROOT = "."
-DAYS = [f"2026-10-{d:02d}" for d in range(8, 22)]
+DAYS = WIN.ISO
 FILES = [f"{ROOT}/data/raw/xyz/fills/{d}.parquet" for d in DAYS]
 con = duckdb.connect(); con.execute("SET memory_limit='2GB'; SET threads=2; SET TimeZone='UTC'")
 con.execute(f"""CREATE TEMP TABLE mk AS

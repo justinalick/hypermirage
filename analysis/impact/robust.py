@@ -4,7 +4,7 @@ O = "data/derived/impact"
 rng = np.random.default_rng(5)
 o = pd.read_parquet(f"{O}/orders.parquet"); o = o[~o.liq]
 def meta(o, G):
-    o = o.sort_values(['a', 't0']).reset_index(drop=True)
+    o = o.sort_values(['a', 't0', 'order_id'], kind='mergesort').reset_index(drop=True)
     new = (o.a != o.a.shift()) | (o.s != o.s.shift()) | ((o.t0 - o.t1.shift()) > G * 1e9)
     o['mo'] = new.cumsum()
     # peak impact: mid just after last fill vs mid before first fill, recomputed from order-level mids

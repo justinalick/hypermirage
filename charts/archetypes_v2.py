@@ -14,9 +14,11 @@ f = pd.read_parquet(f"{O}/features.parquet"); f = f[f.n_orders.notna()].reset_in
 X = pd.read_parquet(f"{O}/X.parquet").drop(columns='cl'); Z = StandardScaler().fit_transform(X)
 rng2 = np.random.default_rng(9)  # same permutation as clusterwise.py
 P = np.column_stack([rng2.permutation(Z[:, j]) for j in range(Z.shape[1])])
-sys.path.insert(0, O)
+sys.path.insert(0, "analysis/archetypes")
 from names import name_clusters
-NAME, GRP = name_clusters(f, lab)
+sys.path.insert(0, "scripts")
+import window as WIN
+NAME, GRP = name_clusters(f, lab, WIN.N_DAYS)
 G = np.array([GRP.get(c, 'noise') for c in lab]); tot = f.notional.sum()
 share = lambda m: 100 * f.notional[m].sum() / tot
 
@@ -50,7 +52,8 @@ for c in range(lab.max() + 1):
     a.text(x, y, str(c + 1), fontsize=9.5, weight="bold", color=C['ink'], ha="center", va="center",
            family=ja.MONO, zorder=5, path_effects=[pe.withStroke(linewidth=3.5, foreground=C['ground'])])
 ja.panel_title(a, f"real accounts: one dot per account, {lab.max()+1} clusters numbered", size=LB)
-leg = [('maker', 'post-only makers (2 clusters)'), ('api', 'API-routed takers'),
+n_mk = sum(1 for c in set(lab[lab >= 0]) if GRP.get(c) == 'maker')
+leg = [('maker', f"post-only makers ({n_mk} cluster{'s' if n_mk != 1 else ''})"), ('api', 'API-routed takers'),
        ('ui', 'builder / front-end takers'), ('noise', 'unassigned (noise)')]
 for i, (k, t) in enumerate(leg):
     m = G == k
@@ -101,7 +104,7 @@ fig.text(792 / W, 1 - 720 / H, "Each feature shuffled on its own, so no account 
 
 # ---- C: Jaccard per cluster
 order = list(np.argsort(-jac)); n = len(order); yy = np.arange(n)
-RP = 32; RT = 876; RB = RT + RP * (n + 0.9)
+RT = 876; RP = min(32, int((H - 200 - RT) / (n + 0.9))); RB = RT + RP * (n + 0.9)   # row height shrinks if there are many clusters
 c_ = ja._px_axes(fig, 600, RT, 408, RB - RT)
 c_.barh(yy, jac[order], color=[COL[GRP[k]] for k in order], height=0.66, zorder=2)
 for y, k in zip(yy, order):
@@ -155,7 +158,9 @@ fig.text(48 / W, 1 - (H - 76) / H,
          f"UMAP then HDBSCAN bootstrap ARI median {rb['boot_ari'][2]:.2f}.",
          color=C['muted'], family=ja.MONO, fontsize=9.5, va="baseline")
 
-ja.finish(fig, f"Only 2 of {n} trader archetypes hold up", hl=f"2 of {n}",
-          subtitle=f"xyz:SP500 perp on Hyperliquid, Oct 8 to 21, 2026, {len(f):,} accounts with 30+ fills",
+n_ok = int((jac >= 0.7).sum())
+WIN.expect("archetypes: clusters with Jaccard >= 0.7", n_ok, 2)   # cluster count itself varies run to run (UMAP)
+ja.finish(fig, f"{'Only ' if n_ok < n / 2 else ''}{n_ok} of {n} trader archetypes hold up", hl=f"{n_ok} of {n}",
+          subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, {len(f):,} accounts with 30+ fills",
           source="Data: Hydromancer Reservoir / node data. One address is not one firm.")
 ja.save(fig, "out/archetypes_v2.png")

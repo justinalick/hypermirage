@@ -15,9 +15,14 @@ C1, C2, C3 = "#2a78d6", "#eb6834", "#1baf7a"
 plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 10, "text.parse_math": False, "axes.edgecolor": GRID,
     "axes.labelcolor": INK2, "xtick.color": INK2, "ytick.color": INK2, "axes.facecolor": SURF, "figure.facecolor": SURF})
 # names from each cluster's median feature profile (see clusterwise profile table in the note)
-import sys; sys.path.insert(0, O)
+import sys; sys.path.insert(0, "analysis/archetypes")
 from names import name_clusters
-NAME, GRP = name_clusters(f, lab)
+sys.path.insert(0, "scripts")
+import window as WIN
+import sys as _sys; _sys.path.insert(0, "scripts")
+import window as _WIN
+_WIN.atlas_only("charts/archetypes_v2.py")   # first-version figure: its text describes the atlas window
+NAME, GRP = name_clusters(f, lab, WIN.N_DAYS)
 COL = {'maker': C1, 'ui': C2, 'api': C3, 'noise': GRAY}
 G = np.array([GRP.get(c, 'noise') for c in lab]); tot = f.notional.sum()
 share = lambda m: 100*f.notional[m].sum()/tot

@@ -37,9 +37,17 @@ aw = a.get_window_extent(r).width
 fig.text(*px(x + aw, y0 + 2 * lh), "a mirage?", family=ja.SANS, weight="semibold", fontsize=27,
          color=C["accent"], va="baseline")
 
-fig.text(*px(x, y0 + 3 * lh - 8), "Partly. Metaorders move price about 2 to 6x more than the book implies.",
+# numbers from the run's outputs: orders in the survival sample, metaorder impact vs the book (as in charts/impact.py)
+import json, pandas as pd
+sys.path.insert(0, "scripts")
+import window as WIN
+n_orders = json.load(open("data/derived/chart_cache/survival.json"))["meta"]["n"]
+cmp = pd.DataFrame(json.load(open("data/derived/impact/robust.json"))["dollar_cmp"])
+cmp = cmp[(cmp.Q <= 1.01e6) & (cmp.Q >= 1e3)]; ratio = cmp.obs_meta_i0 / cmp.book_mean
+r_lo, r_small = ratio[cmp.Q >= 1e4].min(), ratio[cmp.Q <= 1.01e4].median()
+fig.text(*px(x, y0 + 3 * lh - 8), f"Partly. Metaorders move price about {round(r_lo)} to {round(r_small)}x more than the book implies.",
          family=ja.SANS, fontsize=13, color=C["muted"], va="baseline")
-fig.text(*px(x, y0 + 3 * lh + 28), "xyz:SP500  ·  26M orders  ·  Oct 8 to 21, 2026",
+fig.text(*px(x, y0 + 3 * lh + 28), f"xyz:SP500  ·  {n_orders / 1e6:.0f}M orders  ·  {WIN.label()}",
          family=ja.MONO, fontsize=10.5, color=C["faint"], va="baseline")
 ja.handle_row(fig, x, H - (y0 + 3 * lh + 84), align="left")   # above the domain label X overlays bottom-left
 fig.add_artist(Rectangle((0, 0), 1, 1, transform=fig.transFigure, fill=False, ec=C["frame"], lw=4, zorder=100))

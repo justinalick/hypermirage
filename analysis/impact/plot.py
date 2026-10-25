@@ -4,7 +4,7 @@ matplotlib.use("Agg"); import matplotlib.pyplot as plt
 O = "data/derived/impact"
 o = pd.read_parquet(f"{O}/orders.parquet"); o = o[~o.liq]
 def meta(o, G=300):
-    o = o.sort_values(['a', 't0']).reset_index(drop=True)
+    o = o.sort_values(['a', 't0', 'order_id'], kind='mergesort').reset_index(drop=True)
     o['mo'] = ((o.a != o.a.shift()) | (o.s != o.s.shift()) | ((o.t0 - o.t1.shift()) > G * 1e9)).cumsum()
     g = o.groupby('mo'); M = g.agg(q=('q', 'sum'), m0=('m0', 'first'), s=('s', 'first'), t0=('t0', 'min'), sig=('sig_d_bps', 'first'), V=('V_d', 'first'))
     last = o.loc[g.t1.idxmax().values]
@@ -56,6 +56,9 @@ b.legend(frameon=False, loc="upper left", fontsize=8.6, labelcolor=INK2)
 b.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"${v/1e3:,.0f}k" if v < 1e6 else f"${v/1e6:,.0f}M"))
 b.set_ylim(0.01, 5)
 from matplotlib.ticker import FuncFormatter, LogLocator
+import sys as _sys; _sys.path.insert(0, "scripts")
+import window as _WIN
+_WIN.atlas_only("charts/impact.py")   # first-version figure: its text describes the atlas window
 for ax in (a, b):
     ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g}"))
 a.xaxis.set_major_formatter(FuncFormatter(lambda v, _: f"1e{int(round(np.log10(v)))}"))

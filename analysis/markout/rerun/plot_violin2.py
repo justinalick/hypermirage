@@ -1,6 +1,9 @@
 import json, numpy as np, matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys; _sys.path.insert(0, "scripts")
+import window as _WIN
+_WIN.atlas_only("charts/markouts_violin.py")   # first-version figure: its text describes the atlas window
 S = "data/derived/markout/rerun"
 d = json.load(open(f"{S}/hourly.json")); r = json.load(open(f"{S}/markout_res.json"))
 SURF, INK, INK2, MUTE, GRID = "#fcfcfb", "#0b0b0b", "#52514e", "#8a8984", "#e4e3df"

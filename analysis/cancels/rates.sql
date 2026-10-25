@@ -1,4 +1,4 @@
--- Fill vs cancel by distance at placement x resting lifetime, xyz:SP500 2026-10-08..21.
+-- Fill vs cancel by distance at placement x resting lifetime, xyz:SP500, every day of the run window.
 -- Rested orders only (classes displayed_pulled, displayed_partial, filled with >= 1 displayed block).
 SET threads=6; SET memory_limit='8GB';
 COPY (

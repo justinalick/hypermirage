@@ -1,25 +1,34 @@
 """Independent recompute of the funding chart/caption numbers with plain Python (no pandas).
 Inputs only: sp500_funding_api.json, candles.json (no refetch)."""
-import json, math, statistics as st
+import json, math, statistics as st, sys
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
+sys.path.insert(0, "scripts")
+import window as WIN          # window end and the list of holiday dates only; the session logic below is separate
 D = "data/derived/funding"
-NY = ZoneInfo("America/New_York")
+NY, CHI = ZoneInfo("America/New_York"), ZoneInfo("America/Chicago")
 raw = json.load(open(f"{D}/sp500_funding_api.json"))
 H = 3600_000
+END = int(datetime.strptime(WIN.API_END, "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc).timestamp() * 1000)
 rows = {}
 for r in raw:
     hr = r["time"] // H * H                      # print at hour T (floored)
+    if hr > END:
+        continue
     assert hr not in rows
     rows[hr] = (float(r["fundingRate"]), float(r["premium"]))
 hrs = sorted(rows)
 assert (hrs[-1] - hrs[0]) // H + 1 == len(hrs)
 def session(hr):
-    # print at T covers hour starting T-1h; classify by its New York wall clock
-    ny = datetime.fromtimestamp((hr - H) / 1000, timezone.utc).astimezone(NY)
+    # print at T covers hour starting T-1h; classify by its New York wall clock (ES rules in Chicago time)
+    t = datetime.fromtimestamp((hr - H) / 1000, timezone.utc)
+    ny, ch = t.astimezone(NY), t.astimezone(CHI)
     d, h, m = ny.weekday(), ny.hour, ny.minute
     closed = (d == 4 and h >= 17) or d == 5 or (d == 6 and h < 18) or (d < 4 and h == 17)
-    cash = d < 5 and 570 <= h * 60 + m < 960
+    hol = WIN.ES_HOLIDAYS.get(ch.strftime("%Y-%m-%d"))
+    if hol and ch.hour * 60 + ch.minute >= int(hol[:2]) * 60 + int(hol[3:]) and (ch.weekday() == 4 or ch.hour < 17):
+        closed = True                             # early halt; Monday holidays reopen at 17:00 Chicago time
+    cash = d < 5 and 570 <= h * 60 + m < 960 and ny.strftime("%Y-%m-%d") not in WIN.NYSE_HOLIDAYS
     return "closed" if closed else ("cash" if cash else "other_open")
 prem = {h: rows[h][1] * 1e4 for h in hrs}
 ses = {h: session(h) for h in hrs}
@@ -47,7 +56,8 @@ out["cum_long_funding_pct"] = cum; out["per_year_pct"] = cum / (len(hrs) / (24 *
 out["funding_rule_maxerr"] = max(abs((rows[h][1] + min(max(1e-4 - rows[h][1], -3e-4), 3e-4)) / 16 - rows[h][0]) for h in hrs)
 # candles: dedupe keep last
 cr = json.load(open(f"{D}/candles.json")); cd = {}
-for c in cr: cd[c["t"]] = float(c["o"])
+for c in cr:
+    if c["t"] <= END: cd[c["t"]] = float(c["o"])
 out["candles_raw"] = len(cr); out["candles_dedup"] = len(cd)
 # forward 24h return from open of hour T to open of hour T+24
 fw = []

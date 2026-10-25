@@ -1,4 +1,7 @@
 import numpy as np, pandas as pd, json, matplotlib
+import sys as _sys; _sys.path.insert(0, "scripts")
+import window as _WIN
+_WIN.atlas_only("charts/archetypes_v2.py")   # first-version figure: its text describes the atlas window
 matplotlib.use("Agg"); import matplotlib.pyplot as plt
 O = "data/derived/archetypes"
 d = np.load(f"{O}/plotdata.npz"); E1, E2, lab, lp, jac = d['E1'], d['E2'], d['lab'], d['lp'], d['jac']

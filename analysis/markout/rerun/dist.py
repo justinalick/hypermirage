@@ -1,4 +1,7 @@
 import duckdb, numpy as np, json
+import sys
+sys.path.insert(0, "scripts")
+import window as WIN
 S = "data/derived/markout/rerun"
 R = "data/raw/xyz/fills"
 con = duckdb.connect()
@@ -7,8 +10,8 @@ bt, bmid = [b[k] for k in b]; bt = bt.astype(np.int64)
 f = con.execute(f"""
  with t as (select epoch_ns(timestamp::timestamp)::bigint ft, price::double px, size::double sz,
         case when side='buy' then 1 else -1 end s, order_id
-   from read_parquet('{R}/2026-10-*.parquet')
-   where coin='xyz:SP500' and crossed and timestamp >= '2026-10-08' and timestamp < '2026-10-22'),
+   from read_parquet('{R}/*.parquet')
+   where coin='xyz:SP500' and crossed and timestamp >= '{WIN.T0}' and timestamp < '{WIN.T1}'),
  o as (select order_id, sum(px*sz) onot from t group by 1)
  select ft, px, sz, s, onot from t join o using(order_id) order by ft""").fetchnumpy()
 ft = f['ft'].astype(np.int64); px, sz, s, onot = f['px'], f['sz'], f['s'].astype(float), f['onot']

@@ -11,6 +11,8 @@ Usage: .venv/bin/python minute_depth.py OUT.parquet [--exclude-filled]
 """
 import sys
 import duckdb
+sys.path.insert(0, "scripts")
+import window as WIN
 
 R = "."
 out = sys.argv[1]
@@ -22,8 +24,7 @@ cls = ", ".join(f"'{c}'" for c in classes)
 con = duckdb.connect()
 con.execute("SET TimeZone='UTC'; SET threads=6; SET memory_limit='9GB'")
 con.execute("CREATE TABLE snaps (t TIMESTAMP, mid DOUBLE, d5 DOUBLE, d10 DOUBLE, d25 DOUBLE, d_all DOUBLE)")
-for d in range(8, 22):
-    day = f"202610{d:02d}"
+for day in WIN.DAYS:
     # block -> time, from the day's order-status extract
     con.execute(f"""CREATE OR REPLACE TEMP TABLE clock AS
         SELECT block_number blk, min(epoch_ms(block_time::TIMESTAMP)) ms

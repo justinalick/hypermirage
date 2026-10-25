@@ -5,6 +5,9 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
+import sys as _sys; _sys.path.insert(0, "scripts")
+import window as _WIN
+_WIN.atlas_only("charts/regimes.py")   # first-version figure: its text describes the atlas window
 
 D = "data/derived/regimes"
 f = pd.read_parquet(f"{D}/states_K3.parquet")

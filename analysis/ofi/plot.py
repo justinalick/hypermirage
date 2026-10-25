@@ -1,6 +1,9 @@
 import json, matplotlib, numpy as np
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys; _sys.path.insert(0, "scripts")
+import window as _WIN
+_WIN.atlas_only("charts/ofi.py")   # first-version figure: its text describes the atlas window
 O = "data/derived/ofi"
 r = json.load(open(f"{O}/ofi_res.json")); g = json.load(open(f"{O}/gap_res.json"))
 HZ = ["1", "5", "10", "30", "60", "300"]; xl = ["1s", "5s", "10s", "30s", "1m", "5m"]; x = np.arange(len(HZ))

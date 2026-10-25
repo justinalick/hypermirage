@@ -2,7 +2,7 @@
 # Rebuild the markout charts and the independent check. Run from the repository root.
 set -euo pipefail
 cd .
-duckdb -c ".read analysis/markout/rerun/prep_bbo_t.sql"        # 1. timed mid (bbo_t.parquet)
+.venv/bin/python analysis/markout/rerun/prep_bbo_t.py          # 1. timed mid (data/derived/markout/bbo_t.parquet)
 .venv/bin/python analysis/markout/rerun/markout2.py            # 2. markouts + CIs -> markout_res.json
 .venv/bin/python analysis/markout/rerun/dist.py                # 3. hourly means -> hourly.json
 .venv/bin/python analysis/markout/rerun/plot.py                # 4. line chart -> sp500_markouts.png

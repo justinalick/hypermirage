@@ -5,6 +5,8 @@ sys.path.insert(0, "charts")
 import numpy as np, duckdb, matplotlib; matplotlib.use("Agg")
 from matplotlib.ticker import FixedLocator, NullLocator, FuncFormatter
 import justinalick as ja
+sys.path.insert(0, "scripts")
+import window as WIN
 
 Q = "data/derived/queue"
 con = duckdb.connect(f"{Q}/queue.duckdb", read_only=True)
@@ -37,9 +39,9 @@ for i, r in enumerate(rows):
            color=C['actual'], family=ja.MONO, weight="semibold")
     a.text(x[i] + w / 2 + 0.02, v_mid[i] + 0.35, f"{v_mid[i]:.1f}", ha="center", va="bottom", fontsize=9,
            color=C['model'], family=ja.MONO)
-a.set_xticks(x, [f"{l}\nn={r[1] / 1e3:,.0f}k" for l, r in zip(LABELS, rows)], fontsize=9)
+a.set_xticks(x, [f"{l}\nn={r[1] / 1e6:.1f}M" if r[1] >= 1e6 and not WIN.IS_ATLAS else f"{l}\nn={r[1] / 1e3:,.0f}k" for l, r in zip(LABELS, rows)], fontsize=9)
 for t in a.get_xticklabels(): t.set_linespacing(1.3)
-a.set_ylim(0, 17); a.set_yticks([0, 5, 10, 15]); a.yaxis.set_major_formatter(pct)
+a.set_ylim(*ja.fit(0, 17, np.r_[v_all, v_mid] + 1.5, 1)); a.set_yticks([v for v in range(0, 101, 5) if v < a.get_ylim()[1] - 1]); a.yaxis.set_major_formatter(pct)
 a.set_xlim(-0.6, len(rows) - 0.4)
 ja.label_at(a, 2.4, 14.6, "all order sizes", "actual", dy=0, ha="left", size=10)
 ja.label_at(a, 2.4, 12.8, "own order $5-15k only", "model", dy=0, ha="left", size=10)
@@ -69,6 +71,6 @@ fig.text(48 / W, 1 - 788 / H, "FIFO queue replayed from node order statuses; 95.
          "Queue ahead measured at entry only.", color=C['muted'], family=ja.MONO, fontsize=9.5, va="baseline")
 
 ja.finish(fig, f"Fill odds drop from {v_all[0]:.1f}% to {v_all[-1]:.1f}% behind $250k+", hl=f"{v_all[-1]:.1f}%",
-          subtitle=f"xyz:SP500 perp on Hyperliquid, Oct 9 to 21, 2026, {N / 1e6:.2f}M orders at or inside the touch",
+          subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label(1)}, {N / 1e6:.2f}M orders at or inside the touch",
           source="Data: Hydromancer Reservoir / node data.")
 ja.save(fig, "out/queue.png")

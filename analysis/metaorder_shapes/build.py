@@ -1,11 +1,11 @@
-"""Per-metaorder execution-shape features, xyz:SP500 2026-10-08..21.
+"""Per-metaorder execution-shape features, xyz:SP500, every day of the run window (scripts/window.py).
 Rebuilds metaorders from data/derived/impact/orders.parquet with the same rule (same account, same side, gap <= 300 s,
 liquidations excluded as in plot.py) and keeps the child-order sequence of each one."""
 import numpy as np, pandas as pd
 R = "."; O = f"{R}/data/derived/metaorder_shapes"
 o = pd.read_parquet(f"{R}/data/derived/impact/orders.parquet"); o = o[~o.liq]
 top = o.groupby('a').q.sum().idxmax()
-o = o.sort_values(['a', 't0']).reset_index(drop=True)
+o = o.sort_values(['a', 't0', 'order_id'], kind='mergesort').reset_index(drop=True)
 o['mo'] = ((o.a != o.a.shift()) | (o.s != o.s.shift()) | ((o.t0 - o.t1.shift()) > 300e9)).cumsum()
 g = o.groupby('mo')
 M = g.agg(a=('a', 'first'), s=('s', 'first'), t0=('t0', 'min'), t1=('t1', 'max'), q=('q', 'sum'), n=('order_id', 'size'),

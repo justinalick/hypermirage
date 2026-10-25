@@ -1,5 +1,8 @@
 """Static 3-D preview of the interactive page (same embedding, fixed camera)."""
 import json, numpy as np, matplotlib
+import sys as _sys; _sys.path.insert(0, "scripts")
+import window as _WIN
+_WIN.atlas_only("analysis/archetypes/plot3d.py (HTML)")   # first-version figure: its text describes the atlas window
 matplotlib.use("Agg"); import matplotlib.pyplot as plt
 O = "data/derived/archetypes"
 D = json.load(open(f"{O}/plot3d_data.json")); R = D['rows']; N = np.array(D['null'])

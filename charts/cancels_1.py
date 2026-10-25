@@ -5,8 +5,11 @@ sys.path.insert(0, "charts")
 import numpy as np, pandas as pd, matplotlib; matplotlib.use("Agg")
 from matplotlib.colors import LinearSegmentedColormap, LogNorm
 import justinalick as ja
+sys.path.insert(0, "scripts")
+import window as WIN
 
 D = "data/derived/cancels"
+cnt = (lambda n: f"{n/1e3:,.0f}k") if WIN.IS_ATLAS else (lambda n: f"{n/1e6:.1f}M" if n >= 1e6 else f"{n/1e3:,.0f}k")
 DIST = ["1 improves touch", "2 at touch", "3 within 1 bp", "4 1-5 bps", "5 5-25 bps", "6 over 25 bps"]
 DLBL = ["improves touch", "at touch", "within 1 bp", "1-5 bps", "5-25 bps", "over 25 bps"]
 r = pd.read_parquet(f"{D}/rates.parquet")
@@ -36,7 +39,7 @@ for i in range(v.shape[0]):
         dx_ = 0.13 if (i, j) == (li, lj) else 0
         ax.text(j + dx_, i - 0.14, t, ha="center", va="center", fontsize=11, weight="semibold",
                 color=ja.C["ground"] if light else ja.C["ink"])
-        ax.text(j + dx_, i + 0.24, f"{nn.values[i,j]/1e3:,.0f}k", ha="center", va="center", fontsize=9,
+        ax.text(j + dx_, i + 0.24, cnt(nn.values[i, j]), ha="center", va="center", fontsize=9,
                 color=ja.C["ground"] if light else ja.C["muted"])
 
 for x in range(v.shape[1] + 1): ax.axvline(x - .5, color=ja.C["ground"], lw=2)
@@ -51,7 +54,7 @@ ax.set_ylabel("distance from touch at placement", color=ja.C["muted"], family=ja
 
 bx = ja._px_axes(fig, 1176, 240, 288, 408)
 bx.barh(range(6), 100 * nd.values, color=ja.C["faint"], height=0.56)
-bx.set_ylim(5.5, -0.5); bx.set_yticks([]); bx.set_xlim(0, 30)
+bx.set_ylim(5.5, -0.5); bx.set_yticks([]); bx.set_xlim(0, max(30, 10 * np.ceil(100 * np.nanmax(nd.values) / 10 + 0.4)))
 bx.grid(False); bx.set_xticks([0, 10, 20, 30]); bx.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:.0f}%"))
 for i, x in enumerate(100 * nd.values):
     bx.text(x + 0.8, i, f"{x:.0f}%", va="center", fontsize=11, color=ja.C["ink"], weight="semibold")
@@ -60,6 +63,6 @@ ja.panel_title(bx, "cancelled in same block", size=11)
 bx.set_xlabel("share of placed orders, %", color=ja.C["muted"], family=ja.MONO, fontsize=11, labelpad=8)
 
 ja.finish(fig, f"Only {100*share:.2f}% of displayed notional ever filled", hl=f"{100*share:.2f}%",
-          subtitle=f"xyz:SP500 perp on Hyperliquid, Oct 8 to 21, 2026, {r.n.sum()/1e6:.0f}M resting orders, ${r.placed_usd.sum()/1e12:.2f}T displayed",
+          subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, {r.n.sum()/1e6:.0f}M resting orders, ${r.placed_usd.sum()/1e12:.2f}T displayed",
           source="Data: Hydromancer Reservoir / node data. Filled orders stop resting when they fill.")
 ja.save(fig, "out/cancels_1.png")

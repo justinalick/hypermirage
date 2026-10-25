@@ -1,6 +1,9 @@
 """DTW k-medoids on normalized cumulative fill paths (metaorders with >= 4 child orders), with stability checks."""
 import json, numpy as np, pandas as pd
 from sklearn.metrics import silhouette_score, adjusted_rand_score
+import sys
+sys.path.insert(0, "scripts")
+import window as WIN
 O = "data/derived/metaorder_shapes"
 M = pd.read_parquet(f"{O}/metaorders_shape.parquet"); C = pd.read_parquet(f"{O}/curves.parquet")
 M = M.loc[C.index]; X = C.values; K = X.shape[1]; rng = np.random.default_rng(7)
@@ -59,8 +62,9 @@ for k in range(2, 6):
         idx = rng.choice(N, N, replace=True); m = kmedoids(D[np.ix_(idx, idx)], k, restarts=5)
         a.append(adjusted_rand_score(lab_full[k], todist(X, S[idx][m], W).argmin(1)))
     res['ari_boot'][k] = [float(np.min(a)), float(np.median(a))]
-# stability 2: cluster each week separately, assign everything, ARI week1 vs week2 medoids
-wk = (M.day.values >= '20261015')
+# stability 2: cluster each half of the window separately (in the two-week atlas: each week), assign
+# everything, ARI first-half vs second-half medoids (stored as ari_week)
+wk = (M.day.values >= WIN.split_day())
 res['ari_week'] = {}; res['ari_ex_top'] = {}; res['ari_l1_kmedoids'] = {}
 for half in (0, 1):
     pool = np.where(wk == half)[0]; si2 = rng.choice(pool, 1500, replace=False); D2 = pdist(X[si2], W)
@@ -77,7 +81,17 @@ Dl = np.abs(S[:, None] - S[None]).sum(2)
 for k in range(2, 6):
     ml = kmedoids(Dl, k); ll = np.abs(X[:, None] - S[ml][None]).sum(2).argmin(1)
     res['ari_l1_kmedoids'][k] = float(adjusted_rand_score(lab_full[k], ll))
+# k-medoids numbers clusters arbitrarily: renumber by mean fill path (area under the curve), so that
+# label 0 is the most front-loaded and the last label the most back-loaded (k=3: front-loaded, spread out,
+# back-loaded). ARIs above do not depend on the numbering.
+order = {}
+for k in lab_full:
+    area = np.array([X[lab_full[k] == c].mean() for c in range(k)])
+    order[k] = np.argsort(-area)
+    lab_full[k] = np.argsort(order[k])[lab_full[k]]
+res['k3_renumbered_from'] = order[3].tolist()
+print("k=3 renumbered from k-medoids labels", order[3].tolist())
 print(json.dumps(res, indent=1))
 json.dump(res, open(f"{O}/stability.json", "w"), indent=1)
 L = pd.DataFrame({f'k{k}': lab_full[k] for k in lab_full}, index=C.index); L.to_parquet(f"{O}/labels.parquet")
-np.save(f"{O}/medoid_curves.npy", np.array([S[meds[k]] for k in range(2, 6)], dtype=object), allow_pickle=True)
+np.save(f"{O}/medoid_curves.npy", np.array([S[meds[k]][order[k]] for k in range(2, 6)], dtype=object), allow_pickle=True)

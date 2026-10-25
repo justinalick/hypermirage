@@ -1,6 +1,9 @@
 import json, matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys; _sys.path.insert(0, "scripts")
+import window as _WIN
+_WIN.atlas_only("charts/markouts.py")   # first-version figure: its text describes the atlas window
 S = "data/derived/markout/rerun"
 r = json.load(open(f"{S}/markout_res.json"))
 H = ["0", "0.5", "1", "2", "5", "10", "20", "30", "60", "120", "300"]

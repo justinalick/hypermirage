@@ -5,13 +5,15 @@ sys.path.insert(0, "charts")
 import numpy as np, matplotlib; matplotlib.use("Agg")
 from matplotlib.ticker import FixedLocator, NullLocator, FuncFormatter
 import justinalick as ja
+sys.path.insert(0, "scripts")
+import window as WIN
 
 D = json.load(open("data/derived/chart_cache/survival.json"))
 t = np.array(D["grid_s"]); cv = D["curves"]
 BUCKETS = [("a", "at or inside the touch", "actual"), ("b", "up to 1 bp behind", "model"),
            ("c", "1 to 5 bps behind", "faint"), ("d", "more than 5 bps behind", "dim")]
 c1 = {b: cv[b]["cancel_1s"] for b, _, _ in BUCKETS}
-assert [round(100 * c1[b]) for b in "abd"] == [65, 72, 26], c1
+WIN.expect("cancelled within 1s, buckets a/b/d (%)", [round(100 * c1[b]) for b in "abd"], [65, 72, 26])
 LB = 11.5
 
 fig, ax = ja.figure("wide", "night")
@@ -64,6 +66,6 @@ ax.set_xlabel("time since the order first appeared in the book, log scale", colo
 ax.set_ylabel("share of orders still resting, %", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
 m = D["meta"]
 ja.finish(fig, f"{c1['a']:.0%} of quotes at or inside the touch are cancelled within 1s", hl=f"{c1['a']:.0%}",
-          subtitle=f"xyz:SP500 perp on Hyperliquid, Oct 8 to 21, 2026, {m['n'] / 1e6:.1f}M orders, {m['accts']:,} accounts",
+          subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, {m['n'] / 1e6:.1f}M orders, {m['accts']:,} accounts",
           source="Data: Hydromancer Reservoir / node data. Kaplan-Meier; fills and day-end orders censored.")
 ja.save(fig, "out/survival.png")

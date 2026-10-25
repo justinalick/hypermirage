@@ -5,13 +5,15 @@ sys.path.insert(0, "charts")
 import numpy as np, pandas as pd, matplotlib; matplotlib.use("Agg")
 from matplotlib.ticker import FuncFormatter, NullFormatter
 import justinalick as ja
+sys.path.insert(0, "scripts")
+import window as WIN
 
 O = "data/derived/impact"
 o = pd.read_parquet(f"{O}/orders.parquet"); o = o[~o.liq]
 
 
 def meta(o, G=300):
-    o = o.sort_values(['a', 't0']).reset_index(drop=True)
+    o = o.sort_values(['a', 't0', 'order_id'], kind='mergesort').reset_index(drop=True)
     o['mo'] = ((o.a != o.a.shift()) | (o.s != o.s.shift()) | ((o.t0 - o.t1.shift()) > G * 1e9)).cumsum()
     g = o.groupby('mo'); M = g.agg(q=('q', 'sum'), m0=('m0', 'first'), s=('s', 'first'), t0=('t0', 'min'), sig=('sig_d_bps', 'first'), V=('V_d', 'first'))
     last = o.loc[g.t1.idxmax().values]
@@ -74,7 +76,7 @@ txt(a, 1.1e-6, 0.25, f"pooled {pooled_meta['delta']:.2f} [{pooled_meta['delta_ci
 txt(a, 1.1e-6, 0.062, f"largest taker {r2['delta']:.2f} [{r2['delta_ci'][0]:.2f}, {r2['delta_ci'][1]:.2f}]", "muted")
 txt(a, 1.8e-2, 0.0015, f"all others {r1['delta']:.2f} [{r1['delta_ci'][0]:.2f}, {r1['delta_ci'][1]:.2f}]", "actual", ha="right")
 txt(a, 1.8e-2, 0.00085, f"lines: square-root law, Y {r2['Y']:.2f} / {r1['Y']:.2f}", "faint", ha="right", bold=False)
-ja.panel_title(a, "concave: fitted exponents", size=LB)
+ja.panel_title(a, "concave: fitted exponents" if pooled_meta["delta_ci"][1] < 1 else "fitted exponents", size=LB)
 a.set_xlabel("metaorder size / day's volume (Q/V), log", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
 a.set_ylabel("peak impact / daily vol, log", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
 
@@ -91,14 +93,20 @@ txt(b, xe, c.obs_meta_i0.iloc[-1], f"metaorders\nn={int(c.n_meta.sum()):,}", "ac
 txt(b, xe, c.book_mean.iloc[-1] * 1.12, "top-20 book", "model", va="bottom")
 txt(b, xe, c.obs_order_i0.iloc[-1] * 0.95, f"single orders\nn={int(c.n_ord.sum()):,}", "muted", va="top", linespacing=1.3)
 i10 = int(np.argmin(np.abs(c.Q - 1e4)))
-ja.label_at(b, c.Q[i10], c.obs_meta_i0[i10], r"about 6x under \$10k", "actual", dy=48, ha="center", size=LB)  # LED removed on request
-txt(b, 1e5, 0.045, r"about 3x at \$50k to \$300k", "ink", ha="center", bold=False)
+ratio = c.obs_meta_i0 / c.book_mean                            # observed metaorder impact / displayed-book walk
+r_small = ratio[c.Q <= 1.01e4].median(); r_mid = ratio[(c.Q >= 4.6e4) & (c.Q <= 3.2e5)].median()
+r_lo = ratio[c.Q >= 1e4].min()
+WIN.expect("impact vs book: under $10k, $50k-$300k, lowest", [round(r_small), int(r_mid), round(r_lo)], [6, 3, 2])
+fx = (lambda v: f"{v:.0f}") if WIN.IS_ATLAS else (lambda v: f"{v:.1f}")
+ja.label_at(b, c.Q[i10], c.obs_meta_i0[i10], rf"about {round(r_small)}x under \$10k", "actual", dy=48, ha="center", size=LB)  # LED removed on request
+txt(b, 1e5, 0.045, rf"about {int(r_mid) if WIN.IS_ATLAS else fx(r_mid)}x at \$50k to \$300k", "ink", ha="center", bold=False)
 txt(b, 1e5, 0.024, r"book biased low above ~\$500k", "faint", ha="center", bold=False)
 ja.panel_title(b, "vs the book", size=LB)
 b.set_xlabel("signed taker notional, log", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
 b.set_ylabel("mid move with the trade, bps, log", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
 
-ja.finish(fig, "Metaorders move price 2 to 6x more than the book", hl="2 to 6x",
-          subtitle=f"xyz:SP500 perp on Hyperliquid, Oct 8 to 21, 2026, {int(c.n_meta.sum()):,} metaorders (gaps < 5 min)",
+rng_txt = f"{round(r_lo)} to {round(r_small)}x"
+ja.finish(fig, f"Metaorders move price {rng_txt} more than the book", hl=rng_txt,
+          subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, {int(c.n_meta.sum()):,} metaorders (gaps < 5 min)",
           source="Data: Hydromancer Reservoir / node data. Impact = mid 0.25 s after last fill vs before first fill.")
 ja.save(fig, "out/impact.png")

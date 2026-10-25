@@ -1,12 +1,15 @@
 """Mechanical impact from the displayed top-20 L2 (Reservoir 1m): for a market order of $Q,
-mid shift if consumed levels are not refilled, and depth within k bps of mid. 2026-10-08..21."""
+mid shift if consumed levels are not refilled, and depth within k bps of mid, every day of the run window (scripts/window.py)."""
 import duckdb, numpy as np, pandas as pd, json
+import sys
+sys.path.insert(0, "scripts")
+import window as WIN
 R = "."; O = f"{R}/data/derived/impact"
 con = duckdb.connect()
 Q = np.logspace(3, 7, 25)
 rows = []; dep = []; cens = np.zeros(len(Q)); tot = 0
-for d in range(8, 22):
-    df = con.execute(f"select block_time_ms, bids, asks from '{R}/data/raw/xyz/book_1m/SP500/2026-10-{d:02d}.parquet'").fetchall()
+for iso in WIN.ISO:
+    df = con.execute(f"select block_time_ms, bids, asks from '{R}/data/raw/xyz/book_1m/SP500/{iso}.parquet'").fetchall()
     for t, bids, asks in df:
         if not bids or not asks: continue
         bp = np.array([float(x['px']) for x in bids]); bs = np.array([float(x['sz']) for x in bids])

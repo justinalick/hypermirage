@@ -127,11 +127,10 @@ def match(mu_ref, mu):
 
 
 def session(ts):
-    """UTC session labels, same definition as offhours/depth_vol threads (ES: Sun 22:00 - Fri 21:00 UTC, break 21:00 Mon-Thu)."""
-    dow = ts.dt.dayofweek  # Mon=0
-    m = ts.dt.hour * 60 + ts.dt.minute
-    h = ts.dt.hour
-    wk = ((dow == 4) & (h >= 21)) | (dow == 5) | ((dow == 6) & (h < 22))
-    cash = (dow <= 4) & (m >= 810) & (m < 1200)
-    brk = (dow <= 3) & (h == 21)
-    return np.select([wk, cash, brk], ["futures closed (wknd)", "US cash", "ES daily break"], "ES overnight")
+    """Session labels from the scripts/window.py clock (CME ES in Chicago time, NYSE hours, holidays), same
+    definition as the offhours/depth_vol threads. 'futures closed (wknd)' covers weekends and holiday closures."""
+    import sys
+    sys.path.insert(0, "scripts")
+    import window as WIN
+    s = WIN.session(ts)
+    return np.select([s == "closed", s == "cash", s == "break"], ["futures closed (wknd)", "US cash", "ES daily break"], "ES overnight")

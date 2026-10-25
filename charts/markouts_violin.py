@@ -7,8 +7,10 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import to_rgb, to_hex
 from matplotlib.ticker import FuncFormatter
 import justinalick as ja
+sys.path.insert(0, "scripts")
+import window as WIN
 
-S = "data/derived/markout/rerun"
+S ="data/derived/markout/rerun"
 d = json.load(open(f"{S}/hourly.json")); r = json.load(open(f"{S}/markout_res.json"))
 B = [("lt10k", "< $10k", "under $10k", "actual"), ("10k_100k", "$10k to $100k", "$10k to $100k", "model"),
      ("ge100k", ">= $100k", "$100k+", "faint")]
@@ -29,7 +31,8 @@ def kde(v, grid):
 
 
 ahead = {h: float((np.array(d[f"lt10k_{h}"]) > 0).mean()) for h in Hs}
-assert round(ahead[1] * 100) == 55 and round(ahead[10] * 100) == 67, ahead
+WIN.expect("under $10k ahead, % of hours at 1s / 10s", [round(ahead[1] * 100), round(ahead[10] * 100)], [55, 67])
+F = r["fees_bps"]
 
 fig, _ax = ja.figure("wide", "night")
 matplotlib.rcParams["text.parse_math"] = False
@@ -83,7 +86,8 @@ _k = ja.note_at(axs[1], -0.48, -1.22, "box: middle 50% of hours\ndiamond: pooled
                "muted", size=10)
 _k.set_bbox(None); _k.set_ha("left")
 
-ja.finish(fig, "Orders under $10k are ahead in 67% of hours at 10s", hl="67%",
-          subtitle="xyz:SP500 perp on Hyperliquid, Oct 8 to 21, 2026, taker markout per UTC hour, bps",
-          source="Data: Hydromancer Reservoir / node data. Gross of fees: 0.78 bps taker fee incl. builder (0.58 exchange); 1.13 under $10k.")
+ja.finish(fig, f"Orders under $10k are ahead in {ahead[10]:.0%} of hours at 10s", hl=f"{ahead[10]:.0%}",
+          subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, taker markout per UTC hour, bps",
+          source=f"Data: Hydromancer Reservoir / node data. Gross of fees: {F['taker']:.2f} bps taker fee incl. builder "
+                 f"({F['taker_ex_builder']:.2f} exchange); {F['taker_lt10k']:.2f} under $10k.")
 ja.save(fig, "out/markouts_violin.png")

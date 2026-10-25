@@ -1,4 +1,4 @@
-"""Per-minute time-weighted quoted spread for xyz:SP500, 2026-10-08..21.
+"""Per-minute time-weighted quoted spread for xyz:SP500, every day of the run window (scripts/window.py).
 
 Minute boundaries: block_number of the first block of each minute in the Reservoir 1m L2 book.
 Quote states: replayed best bid/ask per block (data/derived/bbo). Each state lasts until the next

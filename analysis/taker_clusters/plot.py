@@ -1,6 +1,9 @@
 import json, matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys; _sys.path.insert(0, "scripts")
+import window as _WIN
+_WIN.atlas_only("charts/taker_markouts.py")   # first-version figure: its text describes the atlas window
 D = "data/derived/taker_clusters"
 r = json.load(open(f"{D}/mk_res.json"))
 SURF, INK, INK2, GRID = "#fcfcfb", "#0b0b0b", "#52514e", "#e4e3df"

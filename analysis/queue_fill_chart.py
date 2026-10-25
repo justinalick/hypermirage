@@ -8,6 +8,9 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+import sys as _sys; _sys.path.insert(0, "scripts")
+import window as _WIN
+_WIN.atlas_only("charts/queue_fill.py")   # first-version figure: its text describes the atlas window
 
 ROOT = os.path.abspath(".")
 OUT = os.path.join(ROOT, "out/queue_fill_v1.png")

@@ -7,6 +7,23 @@ _d.connect = _conn
 try: _d.default_connection().execute("SET memory_limit='3GB'; SET threads=2")
 except Exception: pass
 import duckdb, numpy as np, pandas as pd
+import datetime as dt
+from zoneinfo import ZoneInfo
+sys.path.insert(0, "scripts")
+import window as WIN   # holiday dates only; the UTC session rules below are this check's own
+if WIN.utc_offset_hours() != -4:
+    sys.exit("depth_vol_verify.py: UTC session rules assume US daylight time throughout the window")
+_CHI = ZoneInfo("America/Chicago")
+_HOL = []
+for _d, _hm in WIN.ES_HOLIDAYS.items():   # early halt; Monday holidays reopen 17:00 Chicago, Friday ones run into the weekend
+    _day = dt.date.fromisoformat(_d)
+    _a = dt.datetime.combine(_day, dt.time(int(_hm[:2]), int(_hm[3:])), _CHI).astimezone(dt.timezone.utc).replace(tzinfo=None)
+    _b = dt.datetime.combine(_day, dt.time(16 if _day.weekday() == 4 else 17), _CHI).astimezone(dt.timezone.utc).replace(tzinfo=None)
+    _HOL.append((pd.Timestamp(_a), pd.Timestamp(_b)))
+def hol_mask(t):
+    m_ = np.zeros(len(t), bool)
+    for a_, b_ in _HOL: m_ |= ((t >= a_) & (t < b_)).to_numpy()
+    return m_
 R='.'
 con=duckdb.connect(); con.execute("SET TimeZone='UTC'")
 m=con.sql(f"select * from '{R}/data/derived/offhours/offhours_depth_minutes.parquet' order by t").df()
@@ -34,8 +51,8 @@ def build(df,col,win,midcol='mid'):
     df.loc[df.t.diff()!=pd.Timedelta('1min'),'r']=np.nan
     df['rv']=df.r.rolling(win,min_periods=int(win*.8)).std()*np.sqrt(365*1440)/100
     dow=df.t.dt.day_of_week; h=df.t.dt.hour; mm=h*60+df.t.dt.minute
-    wk=((dow==4)&(h>=21))|(dow==5)|((dow==6)&(h<22))
-    cash=(dow<5)&(mm>=810)&(mm<1200); closed=wk|((dow<4)&(h==21))
+    wk=((dow==4)&(h>=21))|(dow==5)|((dow==6)&(h<22))|hol_mask(df.t)
+    cash=(dow<5)&(mm>=810)&(mm<1200)&~wk&~df.t.dt.strftime('%Y-%m-%d').isin(WIN.NYSE_HOLIDAYS); closed=wk|((dow<4)&(h==21))
     df['g']=np.select([cash,closed],['cash','closed'],'overnight')
     df['hod']=h.astype(str)+np.where(wk,'w','d')
     df['rel']=np.log(df[col])-df.groupby('hod')[col].transform(lambda s: np.log(s).median())

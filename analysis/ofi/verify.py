@@ -1,6 +1,8 @@
 """Independent recomputation of key ofi.py numbers (different code path: DuckDB SQL window functions,
 bins by integer division, forward-filled mid on a full grid). Compares with ofi_res.json."""
 import json, sys, numpy as np, duckdb
+sys.path.insert(0, "scripts")
+import window as WIN
 O = "data/derived/ofi"
 R = json.load(open(f"{O}/ofi_res.json"))["h"]
 con = duckdb.connect()
@@ -18,13 +20,13 @@ for h in (1, 10, 60):
     H = h * 10**9
     # per bin: OFI sum, last mid in bin; full grid with forward-filled mid
     con.execute(f"""CREATE OR REPLACE TABLE b AS
-      WITH g AS (SELECT range k FROM range(0, {14*86400//h})),
+      WITH g AS (SELECT range k FROM range(0, {WIN.N_DAYS*86400//h})),
       agg AS (SELECT (t_ns-{t0})//{H} k, sum(e) ofi, arg_max(lm, t_ns) lm_end FROM ev GROUP BY 1)
       SELECT g.k, coalesce(ofi,0) ofi, last_value(lm_end IGNORE NULLS) OVER (ORDER BY g.k ROWS UNBOUNDED PRECEDING) lm_end
       FROM g LEFT JOIN agg USING(k) ORDER BY g.k""")
     # trailing 30-min time-weighted depth: dep weighted by duration, attributed to the state's own bin (approx.)
     con.execute(f"""CREATE OR REPLACE TABLE dd AS
-      WITH g AS (SELECT range k FROM range(0, {14*86400//h})),
+      WITH g AS (SELECT range k FROM range(0, {WIN.N_DAYS*86400//h})),
       a AS (SELECT (t_ns-{t0})//{H} k, sum(dep*coalesce(dur,0)) dw, sum(coalesce(dur,0)) w FROM ev GROUP BY 1),
       f AS (SELECT g.k, coalesce(dw,0) dw, coalesce(w,0) w FROM g LEFT JOIN a USING(k))
       SELECT k, sum(dw) OVER x / nullif(sum(w) OVER x,0) D FROM f
@@ -41,7 +43,7 @@ for h in (1, 10, 60):
         if w.sum() >= 20 and ofi[w].std() > 0 and r[w].std() > 0: rs.append(np.corrcoef(ofi[w], r[w])[0, 1] ** 2)
     y, xk, vv = r[1:], x[:-1], v[1:] & v[:-1]; day = (k[1:] * h) // 86400
     yy, yh = [], []
-    for td in range(1, 14):
+    for td in range(1, WIN.N_DAYS):
         tr, te = vv & (day < td), vv & (day == td)
         bb = np.linalg.lstsq(np.c_[np.ones(tr.sum()), xk[tr]], y[tr], rcond=None)[0]; yy.append(y[te]); yh.append(bb[0] + bb[1] * xk[te])
     yy, yh = np.concatenate(yy), np.concatenate(yh); oos = 1 - ((yy - yh) ** 2).sum() / (yy ** 2).sum()

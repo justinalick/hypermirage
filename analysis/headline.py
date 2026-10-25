@@ -1,10 +1,14 @@
 """Print the atlas headline numbers from whatever outputs exist under data/derived.
-Each line shows the value recomputed here next to the value printed in the atlas."""
-import json, os
+Each line shows the value recomputed here (for the run's window) next to the value printed in the
+atlas (Oct 8 to 21, 2026); outside the atlas window the two are expected to differ."""
+import json, os, sys
 import duckdb
+sys.path.insert(0, "scripts")
+import window as WIN
 
 D = "data/derived"
 rows = []
+print(f"window: {WIN.label()} ({WIN.span()}){'' if WIN.IS_ATLAS else '; atlas values are for Oct 8 to 21, 2026'}\n")
 
 def check(section, label, atlas, fn):
     try:

@@ -1,13 +1,22 @@
 #!/usr/bin/env bash
-# Rebuild the xyz:SP500 plot atlas (2026-10-08 to 2026-10-21 UTC) from Reservoir fills and node order statuses.
+# Rebuild the xyz:SP500 plot atlas from Reservoir fills and node order statuses, for any window of UTC days.
 #
-#   ./run.sh fetch                 Reservoir fills and 1m L2 for the window (requester pays, about 5 GB)
-#   ./run.sh pipeline              per-day order lifecycles and book replay (needs data/l4/order_statuses)
+#   ./run.sh fetch                 Reservoir fills and 1m L2 for the window (requester pays, about 0.35 GB a day)
+#   ./run.sh pipeline              per-day order lifecycles, book replay, top of book and amend pairs
+#                                  (needs data/l4/order_statuses; days already built are skipped)
 #   ./run.sh analysis [topic ...]  derived tables; topics below, default all
-#   ./run.sh charts                atlas charts -> out/
+#   ./run.sh charts                atlas charts -> <view>/out/
 #   ./run.sh checks [name ...]     independent recomputes; default all
 #   ./run.sh headline              print headline numbers next to the atlas values
 #   ./run.sh all                   pipeline, analysis, charts, headline (fetch and node data not included)
+#
+# Window: HM_START and HM_END (UTC days, YYYYMMDD, inclusive); default 20261008 to 20261021, the
+# published atlas. Example: HM_START=20260425 HM_END=20261024 ./run.sh all
+# Per-day outputs (lifecycles, replayed book, top of book, amend pairs) are shared by every window.
+# Everything else runs inside a per-window view, data/derived/runs/<start>_<end>/: the code directories and
+# the window's per-day files are links there and every output is written there, so windows never
+# overwrite each other and a file glob sees the window's days only. The market clock (CME futures
+# and NYSE sessions, daylight saving time, holidays) is in scripts/window.py.
 #
 # Topics: survival concentration markouts funding cancels heatmap depth_vol vol_spread impact metaorders ofi
 #         taker_clusters archetypes regimes queue
@@ -15,40 +24,78 @@
 # under a lock file so two shells do not compete for memory.
 set -euo pipefail
 cd "$(dirname "$0")"
-PY=${PY:-.venv/bin/python}
+ROOT=$PWD
+PY=${PY:-$ROOT/.venv/bin/python}
 DUCKDB=${DUCKDB:-duckdb}
-DAYS=(20261008 20261009 20261010 20261011 20261012 20261013 20261014 20261015 20261016 20261017 20261018 20261019 20261020 20261021)
+export HM_START=${HM_START:-20261008} HM_END=${HM_END:-20261021}
+mapfile -t DAYS < <("$PY" scripts/window.py days)
+VIEW=$ROOT/$("$PY" scripts/window.py view)
 iso() { echo "${1:0:4}-${1:4:2}-${1:6:2}"; }
-for d in chart_cache concentration cancels offhours heatmap depth_vol impact metaorder_shapes ofi taker_clusters \
-         archetypes regimes queue funding markout/rerun vol_spread; do mkdir -p "data/derived/$d"; done
-mkdir -p data/tmp data/checks/spotcheck data/checks/funding data/checks/queue/work data/checks/cancels/work out
-LOCK=${LOCK:-data/tmp/heavy.lock}
+mkdir -p data/tmp
+LOCK=${LOCK:-$ROOT/data/tmp/heavy.lock}
 heavy() { echo "+ $*" >&2; flock "$LOCK" "$@"; }
 sql() { heavy "$DUCKDB" -c ".read $1"; }
 
 need() { for f in "$@"; do [[ -e $f ]] || { echo "missing input: $f (run the step that builds it first)" >&2; exit 1; }; done; }
+fresh() { [[ -s $1 && $1 -nt $2 ]]; }   # output exists and is newer than its input
 
 fetch() {
-  scripts/fetch.sh xyz fills "$(iso "${DAYS[0]}")" "$(iso "${DAYS[-1]}")"
-  scripts/fetch.sh xyz book:SP500 "$(iso "${DAYS[0]}")" "$(iso "${DAYS[-1]}")"
-}
-
-pipeline() {
-  for d in "${DAYS[@]}"; do
-    need "data/l4/order_statuses/xyz_SP500/$d" "data/raw/xyz/fills/$(iso "$d").parquet" "data/raw/xyz/book_1m/SP500/$(iso "$d").parquet"
-    heavy "$PY" scripts/lifecycle.py --day "$d" --fills "data/raw/xyz/fills/$(iso "$d").parquet"
-    heavy "$PY" scripts/touch.py --day "$d" --check-book "data/raw/xyz/book_1m/SP500/$(iso "$d").parquet"
+  local a=$(iso "${DAYS[0]}") b e
+  while [[ ! $a > $(iso "${DAYS[-1]}") ]]; do   # scripts/fetch.sh takes at most 14 days per call
+    e=$(date -u -d "$a + 13 days" +%F); b=$(iso "${DAYS[-1]}"); [[ $e > $b ]] && e=$b
+    scripts/fetch.sh xyz fills "$a" "$e"
+    scripts/fetch.sh xyz book:SP500 "$a" "$e"
+    a=$(date -u -d "$e + 1 day" +%F)
   done
 }
 
-bbo_t() { [[ -s data/derived/markout/bbo_t.parquet ]] || { mkdir -p data/derived/markout/rerun; sql analysis/markout/rerun/prep_bbo_t.sql; }; }
+pipeline() {
+  local d i S=data/derived
+  for d in "${DAYS[@]}"; do
+    i=$(iso "$d")
+    need "data/l4/order_statuses/xyz_SP500/$d" "data/raw/xyz/fills/$i.parquet" "data/raw/xyz/book_1m/SP500/$i.parquet"
+    fresh "$S/lifecycle/xyz_SP500/$d.parquet" "data/l4/order_statuses/xyz_SP500/$d" ||
+      heavy "$PY" scripts/lifecycle.py --day "$d" --fills "data/raw/xyz/fills/$i.parquet"
+    fresh "$S/lifecycle_touch/xyz_SP500/$d.parquet" "$S/lifecycle/xyz_SP500/$d.parquet" ||
+      heavy "$PY" scripts/touch.py --day "$d" --check-book "data/raw/xyz/book_1m/SP500/$i.parquet"
+    fresh "$S/ofi/l1/$d.parquet" "$S/lifecycle/xyz_SP500/$d.parquet" || heavy "$PY" analysis/ofi/l1.py "$d"
+    fresh "$S/cancels/amends_$d.parquet" "data/l4/order_statuses/xyz_SP500/$d" || heavy "$PY" analysis/cancels/amends.py "$d"
+  done
+}
+
+# The view: links to code and to the window's per-day inputs; real directories for every output.
+view() {
+  local d i v=$VIEW S=data/derived
+  mkdir -p "$v/data/l4/order_statuses/xyz_SP500" "$v/data/raw/xyz/fills" "$v/data/raw/xyz/book_1m/SP500" \
+           "$v/$S/lifecycle/xyz_SP500" "$v/$S/lifecycle_touch/xyz_SP500" "$v/$S/bbo/xyz_SP500" "$v/$S/ofi/l1" \
+           "$v/$S/funding" "$v/out" "$v/data/tmp"
+  for x in analysis charts checks scripts report; do ln -sfn "$ROOT/$x" "$v/$x"; done
+  mkdir -p "$ROOT/$S/hl_api"; ln -sfn "$ROOT/$S/hl_api" "$v/$S/hl_api"   # info API cache, shared by windows
+  for d in "${DAYS[@]}"; do
+    i=$(iso "$d")
+    need "$ROOT/$S/lifecycle_touch/xyz_SP500/$d.parquet" "$ROOT/$S/ofi/l1/$d.parquet" "$ROOT/$S/cancels/amends_$d.parquet"
+    ln -sfn "$ROOT/data/l4/order_statuses/xyz_SP500/$d" "$v/data/l4/order_statuses/xyz_SP500/$d"
+    ln -sf "$ROOT/data/raw/xyz/fills/$i.parquet" "$v/data/raw/xyz/fills/$i.parquet"
+    ln -sf "$ROOT/data/raw/xyz/book_1m/SP500/$i.parquet" "$v/data/raw/xyz/book_1m/SP500/$i.parquet"
+    for t in lifecycle lifecycle_touch bbo; do ln -sf "$ROOT/$S/$t/xyz_SP500/$d.parquet" "$v/$S/$t/xyz_SP500/$d.parquet"; done
+    ln -sf "$ROOT/$S/ofi/l1/$d.parquet" "$v/$S/ofi/l1/$d.parquet"
+    mkdir -p "$v/$S/cancels"; ln -sf "$ROOT/$S/cancels/amends_$d.parquet" "$v/$S/cancels/amends_$d.parquet"
+  done
+  # the public-API pull (funding, 1h candles) covers far more than any window; funding_premium.py selects the window
+  for f in sp500_funding_api.json candles.json; do [[ -e $ROOT/$S/funding/$f ]] && ln -sf "$ROOT/$S/funding/$f" "$v/$S/funding/$f"; done
+  for d in chart_cache concentration cancels offhours heatmap depth_vol impact metaorder_shapes ofi taker_clusters \
+           archetypes regimes queue funding markout/rerun vol_spread; do mkdir -p "$v/$S/$d"; done
+  mkdir -p "$v/data/checks/clock" "$v/data/checks/spotcheck" "$v/data/checks/funding" "$v/data/checks/queue/work" "$v/data/checks/cancels/work"
+}
+inview() { cd "$ROOT"; view; cd "$VIEW"; }
+
+bbo_t() { [[ -s data/derived/markout/bbo_t.parquet ]] || { mkdir -p data/derived/markout/rerun; heavy "$PY" analysis/markout/rerun/prep_bbo_t.py; }; }
 offhours() { [[ -s data/derived/offhours/offhours_depth_minutes.parquet ]] || heavy "$PY" analysis/offhours/offhours_depth.py; }
-ofi_l1() { [[ -d data/derived/ofi/l1 && $(ls data/derived/ofi/l1 | wc -l) -ge ${#DAYS[@]} ]] || heavy "$PY" analysis/ofi/l1.py "${DAYS[@]}"; }
 impact_tables() { [[ -s data/derived/impact/orders.parquet ]] || topic_impact; }
 
 topic_survival() { heavy "$PY" charts/survival_cache.py; }
 topic_concentration() {
-  sql analysis/concentration/universe.sql
+  heavy "$PY" analysis/concentration/universe.py
   "$PY" analysis/concentration/roles.py          # public Hyperliquid info API, declared sub-accounts only
   heavy "$PY" charts/concentration_cache.py
 }
@@ -63,9 +110,7 @@ topic_funding() {
   "$PY" analysis/funding/funding_premium.py
 }
 topic_cancels() {
-  heavy "$PY" analysis/cancels/amends.py "${DAYS[@]}"
-  sql analysis/cancels/amends_sum.sql
-  ofi_l1
+  heavy "$PY" analysis/cancels/amends_sum.py
   heavy "$PY" analysis/cancels/latency2.py "${DAYS[@]}"
   sql analysis/cancels/rates.sql
 }
@@ -83,8 +128,8 @@ topic_impact() {
   bbo_t
   heavy "$PY" analysis/impact/build.py
   heavy "$PY" analysis/impact/fit.py
-  heavy "$PY" analysis/impact/robust.py
   heavy "$PY" analysis/impact/bookwalk.py
+  heavy "$PY" analysis/impact/robust.py
 }
 topic_metaorders() {
   impact_tables
@@ -92,7 +137,7 @@ topic_metaorders() {
   heavy "$PY" analysis/metaorder_shapes/cluster.py
   heavy "$PY" analysis/metaorder_shapes/impact.py
 }
-topic_ofi() { ofi_l1; heavy "$PY" analysis/ofi/ofi.py; heavy "$PY" analysis/ofi/gap.py; }
+topic_ofi() { heavy "$PY" analysis/ofi/ofi.py; heavy "$PY" analysis/ofi/gap.py; }
 topic_taker_clusters() {
   bbo_t
   heavy "$DUCKDB" < analysis/taker_clusters/takers.sql
@@ -105,25 +150,27 @@ topic_archetypes() {
   for s in features cluster cluster_umap clusterwise plot3d; do heavy "$PY" "analysis/archetypes/$s.py"; done
 }
 topic_regimes() {
-  offhours; ofi_l1
+  offhours
   heavy "$PY" analysis/regimes/features.py
   heavy "$PY" analysis/regimes/run.py
   for k in 2 3; do heavy "$PY" analysis/regimes/analyze.py "$k"; done
 }
 topic_queue() {
   heavy "$PY" analysis/queue_replay.py "${DAYS[@]}"
+  rm -f data/derived/queue/queue.duckdb
   heavy "$DUCKDB" data/derived/queue/queue.duckdb < analysis/queue_fill.sql
   "$PY" analysis/queue_km.py
 }
 
 TOPICS=(survival concentration markouts funding cancels heatmap depth_vol vol_spread impact metaorders ofi taker_clusters archetypes regimes queue)
-analysis() { for t in "${@:-${TOPICS[@]}}"; do echo "== analysis: $t" >&2; "topic_$t"; done; }
+analysis() { inview; for t in "${@:-${TOPICS[@]}}"; do echo "== analysis: $t" >&2; "topic_$t"; done; }
 
 CHARTS=(survival concentration markouts markouts_violin funding cancels_1 cancels_2 cancels_3 heatmap depth_week depth_vol vol_spread impact
         metaorder ofi taker_markouts archetypes_v2 regimes queue_fill)
-charts() { for c in "${CHARTS[@]}"; do echo "== chart: $c" >&2; "$PY" "charts/$c.py"; done; }
+charts() { inview; for c in "${CHARTS[@]}"; do echo "== chart: $c" >&2; "$PY" "charts/$c.py"; done; }
 
-CHECKS=(spotcheck funding queue cancels vol_spread)
+CHECKS=(clock spotcheck funding queue cancels vol_spread)
+check_clock() { offhours; "$PY" checks/clock/holidays.py; }   # holiday halts in scripts/window.py vs the replayed book
 check_spotcheck() {
   for f in checks/spotcheck/*.py; do
     case $f in *regimes_verify_verify_hmm.py) heavy "$PY" "$f" data/derived/regimes/fits.pkl ;; *) heavy "$PY" "$f" ;; esac
@@ -133,8 +180,17 @@ check_vol_spread() { heavy "$PY" checks/vol_spread/check_vol_spread.py; }
 check_funding() { "$PY" checks/funding/recompute.py; }
 check_queue() {
   heavy "$PY" checks/queue/extract.py
-  heavy "$PY" checks/queue/fifo_replay.py 20261008 -- 20261009 20261010
-  heavy "$PY" checks/queue/fifo_replay.py 20261011 20261012 -- 20261013 20261014
+  local i n=${#DAYS[@]} k
+  if [[ $HM_START == 20261008 && $HM_END == 20261021 ]]; then   # the atlas check: two warm-up + check stretches
+    heavy "$PY" checks/queue/fifo_replay.py 20261008 -- 20261009 20261010
+    heavy "$PY" checks/queue/fifo_replay.py 20261011 20261012 -- 20261013 20261014
+  else   # six stretches spread over the window: one warm-up day, then two check days
+    for k in 0 1 2 3 4 5; do
+      i=$(( k * (n - 3) / 5 ))
+      heavy "$PY" checks/queue/fifo_replay.py "${DAYS[i]}" -- "${DAYS[i + 1]}" "${DAYS[i + 2]}"
+    done
+  fi
+  heavy "$PY" checks/queue/touch_compare.py
   heavy "$PY" checks/queue/recompute.py
 }
 check_cancels() {
@@ -145,14 +201,14 @@ check_cancels() {
   sql checks/cancels/rates_v.sql
   "$PY" checks/cancels/summarize.py
 }
-checks() { for c in "${@:-${CHECKS[@]}}"; do echo "== check: $c" >&2; "check_$c"; done; }
+checks() { inview; for c in "${@:-${CHECKS[@]}}"; do echo "== check: $c" >&2; "check_$c"; done; }
 
-headline() { "$PY" analysis/headline.py; }
+headline() { inview; "$PY" analysis/headline.py; }
 
 cmd=${1:-}; shift || true
 case $cmd in
   fetch|pipeline|charts|headline) "$cmd" ;;
   analysis|checks) "$cmd" "$@" ;;
   all) pipeline; analysis; charts; headline ;;
-  *) sed -n '2,15p' "$0"; exit 1 ;;
+  *) sed -n '2,24p' "$0"; exit 1 ;;
 esac

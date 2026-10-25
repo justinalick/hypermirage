@@ -5,14 +5,16 @@
      The snapshot at the start of minute m+1 is used as the end-of-minute book for minute m.
 Writes depth_alt.parquet (t, d10_net, l2_20lvl)."""
 import duckdb
+import sys
+sys.path.insert(0, "scripts")
+import window as WIN
 
 R = "."
 O = f"{R}/data/derived/regimes/verify"
 con = duckdb.connect()
 con.execute("SET TimeZone='UTC'; SET threads=3; SET memory_limit='4GB'; SET preserve_insertion_order=false")
 con.execute("CREATE TABLE net (t TIMESTAMP, d10_net DOUBLE)")
-for d in range(8, 22):
-    day = f"202610{d:02d}"
+for day in WIN.DAYS:
     con.execute(f"""CREATE OR REPLACE TEMP TABLE clock AS SELECT block_number blk, min(epoch_ms(block_time::TIMESTAMP)) ms
         FROM read_parquet('{R}/data/l4/order_statuses/xyz_SP500/{day}/*.parquet') GROUP BY 1""")
     con.execute(f"""CREATE OR REPLACE TEMP TABLE smp AS
@@ -32,7 +34,7 @@ for d in range(8, 22):
                coalesce(sum(r.usd) FILTER (WHERE abs(r.px - smp.mid) / smp.mid * 1e4 <= 10), 0)
         FROM smp JOIN rest r ON r.s <= smp.blk AND r.e > smp.blk GROUP BY smp.mn""")
     print(day, flush=True)
-books = [f"{R}/data/raw/xyz/book_1m/SP500/2026-10-{d:02d}.parquet" for d in range(8, 23) if d < 22]
+books = [f"{R}/data/raw/xyz/book_1m/SP500/{d}.parquet" for d in WIN.ISO]
 con.execute(f"""CREATE TABLE l2 AS
     SELECT make_timestamp((block_time_ms // 60000 - 1) * 60000000) t,
            (SELECT sum(x.px::DOUBLE * x.sz::DOUBLE) FROM unnest(bids) AS u(x)) + (SELECT sum(x.px::DOUBLE * x.sz::DOUBLE) FROM unnest(asks) AS u(x)) l2_20lvl

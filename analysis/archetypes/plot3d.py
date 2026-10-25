@@ -3,8 +3,10 @@ import numpy as np, pandas as pd, json, warnings, sys
 warnings.filterwarnings('ignore')
 from sklearn.preprocessing import StandardScaler
 import umap
-O = "data/derived/archetypes"; sys.path.insert(0, O)
+O = "data/derived/archetypes"; sys.path.insert(0, "analysis/archetypes")
 from names import name_clusters
+sys.path.insert(0, "scripts")
+import window as WIN
 f = pd.read_parquet(f"{O}/features.parquet"); f = f[f.n_orders.notna()].reset_index(drop=True)
 X = pd.read_parquet(f"{O}/X.parquet").drop(columns='cl'); Z = StandardScaler().fit_transform(X)
 d = np.load(f"{O}/plotdata.npz"); lab, lp, jac = d['lab'], d['lp'], d['jac']
@@ -12,7 +14,7 @@ rng2 = np.random.default_rng(9)
 P = np.column_stack([rng2.permutation(Z[:, j]) for j in range(Z.shape[1])])
 E = umap.UMAP(n_components=3, n_neighbors=30, min_dist=0.15, random_state=3).fit_transform(Z)
 EP = umap.UMAP(n_components=3, n_neighbors=30, min_dist=0.15, random_state=3).fit_transform(P)
-NAME, GRP = name_clusters(f, lab); tot = f.notional.sum()
+NAME, GRP = name_clusters(f, lab, WIN.N_DAYS); tot = f.notional.sum()
 rows = []
 for i in range(len(f)):
     c = int(lab[i]); r = f.iloc[i]
