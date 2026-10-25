@@ -128,7 +128,7 @@ figure img { display: block; width: 100%; height: auto; max-width: 100%; }
 .wrap > footer { color: var(--muted); font-family: var(--mono); font-size: 12px; border-top: 1px solid var(--axis); padding-top: 16px; }
 
 /* Fixed header and footer. Anchors land below the header (scroll-padding). */
-html { scroll-behavior: smooth; scroll-padding-top: 80px; scroll-padding-bottom: 64px; }
+html { scroll-behavior: smooth; scroll-padding-top: calc(80px + env(safe-area-inset-top, 0px)); scroll-padding-bottom: 64px; }
 body { padding-top: calc(56px + env(safe-area-inset-top, 0px)); padding-bottom: 96px; margin: 0; }
 /* iOS in-app browsers (Telegram, WKWebView) can paint animated or composited content over fixed bars
    while scrolling. Give the bars their own layer above everything, and keep the page's own
