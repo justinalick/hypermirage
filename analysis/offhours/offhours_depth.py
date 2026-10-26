@@ -27,7 +27,10 @@ for day in WIN.DAYS:
         FROM read_parquet('{R}/data/l4/order_statuses/xyz_SP500/{day}/*.parquet') GROUP BY 1""")
     # one sample block per minute: the last block of each minute, with the replayed mid there
     con.execute(f"""CREATE OR REPLACE TEMP TABLE smp AS
-        WITH m AS (SELECT ms // 60000 AS mn, max(blk) blk FROM clock GROUP BY 1)
+        WITH m AS (SELECT ms // 60000 AS mn, max(blk) blk FROM clock
+                   WHERE ms >= epoch_ms(TIMESTAMP '{day[:4]}-{day[4:6]}-{day[6:]}')          -- this UTC day only: the last hour
+                     AND ms < epoch_ms(TIMESTAMP '{day[:4]}-{day[4:6]}-{day[6:]}') + 86400000  -- file can reach past midnight
+                   GROUP BY 1)
         SELECT m.mn, m.blk, (b.best_bid + b.best_ask) / 2 mid
         FROM m ASOF JOIN read_parquet('{R}/data/derived/bbo/xyz_SP500/{day}.parquet') b ON b.block <= m.blk
         WHERE b.best_bid IS NOT NULL AND b.best_ask IS NOT NULL""")
