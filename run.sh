@@ -95,7 +95,7 @@ view() {
            archetypes regimes queue funding markout/rerun vol_spread; do mkdir -p "$v/$S/$d"; done
   mkdir -p "$v/data/checks/clock" "$v/data/checks/spotcheck" "$v/data/checks/funding" "$v/data/checks/queue/work" "$v/data/checks/cancels/work"
 }
-inview() { cd "$ROOT"; view; cd "$VIEW"; }
+inview() { cd "$ROOT"; { flock 9; view; } 9>"$ROOT/data/tmp/view.lock"; cd "$VIEW"; }   # one view build at a time
 
 bbo_t() { [[ -s data/derived/markout/bbo_t.parquet ]] || { mkdir -p data/derived/markout/rerun; heavy "$PY" analysis/markout/rerun/prep_bbo_t.py; }; }
 offhours() { [[ -s data/derived/offhours/offhours_depth_minutes.parquet ]] || heavy "$PY" analysis/offhours/offhours_depth.py; }

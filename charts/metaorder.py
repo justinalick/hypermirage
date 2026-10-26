@@ -83,7 +83,7 @@ ylo, yhi = min(r['Y'] for r in shp), max(r['Y'] for r in shp)
 WIN.expect("metaorder shape Y range (other accounts)", [round(ylo, 2), round(yhi, 2)], [0.65, 1.20])
 yr = f"Y {ylo:.2f} to {yhi:.2f}"
 ja.finish(fig, f"Execution shape barely moves impact: {yr}" if overlap else f"Execution shape and impact: {yr}", hl=yr,
-          subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, {len(L):,} multi-child metaorders",
+          subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, {len(L):,} metaorders with 4+ child orders",
           source=f"Data: Hydromancer Reservoir / node data. DTW k-medoids, k=3: bootstrap ARI {ab:.2f}, "
                  f"{'week to week' if WIN.IS_ATLAS else 'first vs second half'} {aw:.2f}.")
 ja.save(fig, "out/metaorder.png")
