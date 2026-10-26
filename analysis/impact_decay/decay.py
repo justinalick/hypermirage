@@ -24,13 +24,14 @@ for h in H:   # each order's mids are relative to its own start: convert to a mi
     m_h = last[h].values / 1e4 * last.s.values * last.m0.values + last.m0.values
     M[h] = M.s * (m_h - M.m0) / M.m0 * 1e4
 # next taker order by the same account, either side
-nxt = o.groupby("a").t0.shift(-1)
-M["gap_next_s"] = (nxt.loc[g.t1.idxmax().values].values - M.t1.values) / 1e9
+# the account's next taker order is the first order of its next metaorder (metaorder ids follow account, then time)
+nxt_t0 = M.t0.shift(-1).where(M.a.shift(-1) == M.a)
+M["gap_next_s"] = (nxt_t0 - M.t1) / 1e9
 M["clean"] = ~(M.gap_next_s <= 300)
 M = M.dropna(subset=H)
 top = o.groupby("a").q.sum().idxmax()
 M["top"] = M.a == top
-del o, g, last, nxt                                # the order table is no longer needed; free it before the book
+del o, g, last                                     # the order table is no longer needed; free it before the book
 BK = [(1e3, 1e4, "$1k to $10k"), (1e4, 1e5, "$10k to $100k"), (1e5, 1e6, "$100k to $1M"), (1e6, np.inf, "$1M+")]
 days = np.array(sorted(M.day.unique())); di = {d: i for i, d in enumerate(days)}
 rng = np.random.default_rng(11)
