@@ -37,7 +37,15 @@ heavy() { echo "+ $*" >&2; flock "$LOCK" "$@"; }
 sql() { heavy "$DUCKDB" -c ".read $1"; }
 
 need() { for f in "$@"; do [[ -e $f ]] || { echo "missing input: $f (run the step that builds it first)" >&2; exit 1; }; done; }
-fresh() { [[ -s $1 && $1 -nt $2 ]]; }   # output exists and is newer than its input
+# An output is fresh when it exists and its input has not changed since it was built. The input's fingerprint
+# (a day folder: file names and sizes; a file: size and time) is kept next to the output in <output>.in, so inputs
+# copied in later with older timestamps (rsync -a keeps the sender's times) still trigger a rebuild.
+# Outputs from before fingerprints existed fall back to the timestamp test once and get a fingerprint.
+fp() { if [[ -d $1 ]]; then find "$1" -maxdepth 1 -type f ! -name '*.tmp' -printf '%f %s\n' | sort | md5sum | cut -c1-32
+       else stat -c '%s %Y' "$1"; fi; }
+fresh() { [[ -s $1 ]] || return 1
+          if [[ -f $1.in ]]; then [[ $(<"$1.in") == "$(fp "$2")" ]]; else [[ $1 -nt $2 ]] && fp "$2" > "$1.in"; fi; }
+stamp() { fp "$2" > "$1.in"; }   # after a build: record the input it was built from
 
 fetch() {
   local a=$(iso "${DAYS[0]}") b e
@@ -54,12 +62,12 @@ pipeline() {
   for d in "${DAYS[@]}"; do
     i=$(iso "$d")
     need "data/l4/order_statuses/xyz_SP500/$d" "data/raw/xyz/fills/$i.parquet" "data/raw/xyz/book_1m/SP500/$i.parquet"
-    fresh "$S/lifecycle/xyz_SP500/$d.parquet" "data/l4/order_statuses/xyz_SP500/$d" ||
-      heavy "$PY" scripts/lifecycle.py --day "$d" --fills "data/raw/xyz/fills/$i.parquet"
-    fresh "$S/lifecycle_touch/xyz_SP500/$d.parquet" "$S/lifecycle/xyz_SP500/$d.parquet" ||
-      heavy "$PY" scripts/touch.py --day "$d" --check-book "data/raw/xyz/book_1m/SP500/$i.parquet"
-    fresh "$S/ofi/l1/$d.parquet" "$S/lifecycle/xyz_SP500/$d.parquet" || heavy "$PY" analysis/ofi/l1.py "$d"
-    fresh "$S/cancels/amends_$d.parquet" "data/l4/order_statuses/xyz_SP500/$d" || heavy "$PY" analysis/cancels/amends.py "$d"
+    local L4=data/l4/order_statuses/xyz_SP500/$d LC=$S/lifecycle/xyz_SP500/$d.parquet LT=$S/lifecycle_touch/xyz_SP500/$d.parquet
+    fresh "$LC" "$L4" || { heavy "$PY" scripts/lifecycle.py --day "$d" --fills "data/raw/xyz/fills/$i.parquet" && stamp "$LC" "$L4"; }
+    fresh "$LT" "$LC" ||
+      { heavy "$PY" scripts/touch.py --day "$d" --check-book "data/raw/xyz/book_1m/SP500/$i.parquet" && stamp "$LT" "$LC"; }
+    fresh "$S/ofi/l1/$d.parquet" "$LC" || { heavy "$PY" analysis/ofi/l1.py "$d" && stamp "$S/ofi/l1/$d.parquet" "$LC"; }
+    fresh "$S/cancels/amends_$d.parquet" "$L4" || { heavy "$PY" analysis/cancels/amends.py "$d" && stamp "$S/cancels/amends_$d.parquet" "$L4"; }
   done
 }
 
@@ -165,7 +173,8 @@ topic_queue() {
 TOPICS=(survival concentration markouts funding cancels heatmap depth_vol vol_spread impact metaorders ofi taker_clusters archetypes regimes queue)
 analysis() { inview; for t in "${@:-${TOPICS[@]}}"; do echo "== analysis: $t" >&2; "topic_$t"; done; }
 
-CHARTS=(survival concentration markouts markouts_violin funding cancels_1 cancels_2 cancels_3 heatmap depth_week depth_vol vol_spread impact
+CHARTS=(metaorder_explainer survival concentration markouts markouts_violin funding cancels_1 cancels_2 cancels_3 heatmap depth_week
+        depth_vol vol_spread impact
         metaorder ofi taker_markouts archetypes_v2 regimes queue_fill)
 charts() { inview; for c in "${CHARTS[@]}"; do echo "== chart: $c" >&2; "$PY" "charts/$c.py"; done; }
 

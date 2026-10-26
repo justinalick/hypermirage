@@ -43,7 +43,8 @@ def check(name, got, want, tol):
 
 
 # 1. spread on a sample day (mid-window) by a second method
-SAMPLE = WIN.DAYS[len(WIN.DAYS) // 2] if not WIN.IS_ATLAS else "20261014"
+_wd = [d for d in WIN.DATES if d.weekday() < 5]   # a weekday: thin weekend books straddle more minute starts
+SAMPLE = _wd[len(_wd) // 2].strftime("%Y%m%d") if not WIN.IS_ATLAS else "20261014"
 con.execute(f"""CREATE TABLE b AS SELECT date_trunc('minute', make_timestamp(block_time_ms * 1000))::TIMESTAMP t,
     block_number::BIGINT b0 FROM read_parquet('{L2}')""")
 got = con.sql(f"""

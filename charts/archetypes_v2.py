@@ -23,7 +23,9 @@ G = np.array([GRP.get(c, 'noise') for c in lab]); tot = f.notional.sum()
 share = lambda m: 100 * f.notional[m].sum() / tot
 
 fig, ax0 = ja.figure("wide_tall", "night"); ax0.remove()
-W, H = 1536, 1656                                   # custom tall canvas, 69 grid units
+NCL = lab.max() + 1
+MANY = NCL > 15                                      # long windows find many small clusters: taller canvas, fewer map labels
+W, H = 1536, 1656 + (26 * (NCL + 1) - 32 * 21 + 240 if MANY else 0)   # 69 grid units in the atlas
 fig.set_size_inches(W / ja.DPI, H / ja.DPI)
 C = ja.C
 DIM = "#566772"                                      # dim grey for noise, below faint in lightness
@@ -48,6 +50,7 @@ for k in ('noise', 'ui', 'api', 'maker'):
     m = G == k
     a.scatter(E1[m, 0], E1[m, 1], s=7 if k != 'noise' else 5, c=COL[k], lw=0, zorder=2)
 for c in range(lab.max() + 1):
+    if MANY and (lab == c).mean() < 0.005: continue   # the smallest clusters are named in panel C only
     x, y = np.median(E1[lab == c], axis=0)
     a.text(x, y, str(c + 1), fontsize=9.5, weight="bold", color=C['ink'], ha="center", va="center",
            family=ja.MONO, zorder=5, path_effects=[pe.withStroke(linewidth=3.5, foreground=C['ground'])])
@@ -71,17 +74,23 @@ b.scatter(E2[~isl, 0], E2[~isl, 1], s=5, c=C['faint'], lw=0)
 b.scatter(E2[isl, 0], E2[isl, 1], s=7, c=ja.PUNK['highlight'], lw=0)
 Pdf = pd.DataFrame(P, columns=X.columns)
 lo, hi = E2.min(0), E2.max(0); SPAN = hi - lo
-b.set_xlim(lo[0] - 0.42 * SPAN[0], hi[0] + 0.12 * SPAN[0]); b.set_ylim(lo[1] - 0.16 * SPAN[1], hi[1] + 0.24 * SPAN[1])
+b.set_xlim(lo[0] - 0.42 * SPAN[0], hi[0] + (0.34 if MANY else 0.12) * SPAN[0]); b.set_ylim(lo[1] - 0.16 * SPAN[1], hi[1] + 0.24 * SPAN[1])
 NICE = {'alo_share': 'high post-only share', 'net_flow_ratio': 'one-way net flow', 'twap_share': 'high TWAP share',
         'log_cancel_to_fill': 'high cancel-to-fill', 'trigger_share': 'high stop / TP share',
-        'frontend_share': 'high front-end share', 'maker_share': 'high maker share', 'log_rest_s': 'long rest time'}
+        'frontend_share': 'high front-end share', 'maker_share': 'high maker share', 'log_rest_s': 'long rest time',
+        'builder_share': 'high builder share', 'has_resting': 'has resting orders', 'days_active': 'many days active'}
 LBL = {}
+isl_rank = pd.Series(lp[(lp >= 0) & (lp != big)]).value_counts().index[:5]
+used = set()
 for c in range(lp.max() + 1):
+    if MANY and c != big and c not in isl_rank: continue   # label the five largest islands only
     m = lp == c; x, y = np.median(E2[m], axis=0)
     if c == big:
         t, col = f"main blob, {m.sum():,} accts:\nnothing unusual", C['faint']
     else:
         top = Pdf[m].mean().abs().idxmax(); t, col = f"{m.sum()} accts:\n{NICE.get(top, top)}", ja.PUNK['highlight']
+        if MANY and top in used: continue          # one label per kind of island
+        used.add(top)
     ha = va = "center"
     if c == big:   # above the blob, right-aligned to its right edge, in the clear band
         x, y = np.percentile(E2[m, 0], 99), hi[1] + 0.03 * SPAN[1]; ha, va = "right", "bottom"
@@ -105,7 +114,7 @@ fig.text(792 / W, 1 - 720 / H, "Each feature shuffled on its own, so no account 
 # ---- C: Jaccard per cluster
 order = list(np.argsort(-jac)); n = len(order); yy = np.arange(n)
 RT = 876; RP = min(32, int((H - 200 - RT) / (n + 0.9))); RB = RT + RP * (n + 0.9)   # row height shrinks if there are many clusters
-c_ = ja._px_axes(fig, 600, RT, 408, RB - RT)
+c_ = ja._px_axes(fig, 640 if MANY else 600, RT, 368 if MANY else 408, RB - RT)
 c_.barh(yy, jac[order], color=[COL[GRP[k]] for k in order], height=0.66, zorder=2)
 for y, k in zip(yy, order):
     m = lab == k
@@ -113,10 +122,10 @@ for y, k in zip(yy, order):
     c_.text(jac[k] + (0.06 if hi else 0.02), y, f"{jac[k]:.2f}  n={int(m.sum())}  {share(m):.0f}%", va="center",
             fontsize=8.5, color=C['actual'] if hi else C['muted'], family=ja.MONO, weight="semibold" if hi else "regular",
             bbox=dict(boxstyle="square,pad=0.15", fc=C['ground'], ec="none"), zorder=4)
-c_.set_yticks(yy, [f"{k+1:>2} {short(NAME[k])}" for k in order], fontsize=8.5)
+c_.set_yticks(yy, [f"{k+1:>2} {short(NAME[k])}"[:44 if MANY else None] for k in order], fontsize=8.5)
 for tl, k in zip(c_.get_yticklabels(), order):
     tl.set_color(COL[GRP[k]] if GRP[k] == 'maker' else C['muted'])
-c_.set_ylim(n + 0.4, -0.5); c_.set_xlim(0, 1.4)
+c_.set_ylim(n + 0.4, -0.5); c_.set_xlim(0, 1.8 if MANY else 1.4)
 c_.set_xticks([0, 0.25, 0.5, 0.75, 1.0], ["0", ".25", ".5", ".75", "1"])
 c_.grid(False)
 for x, t, ha, dx in ((0.75, "stable", "left", 0.015), (0.5, "dissolves", "right", -0.015)):
@@ -127,7 +136,7 @@ k2 = order[1]; m2 = lab == k2
 # ja.signal(c_, jac[k2], 1, ms=10)
 c_.annotate(f"{int((jac >= 0.7).sum())} of {n} clusters come close to stable", (0, 1), xycoords="axes fraction",
             xytext=(-276, 5), textcoords="offset points", fontsize=LB, family=ja.MONO, color=C['ink'], va="bottom")
-c_.set_xlabel("mean Jaccard vs best match, 30 refits", **AX); c_.set_ylabel("cluster", **AX)
+c_.set_xlabel("mean Jaccard vs best match, 30 refits", **AX); c_.set_ylabel("" if MANY else "cluster", **AX)
 
 # ---- D: feature profile heatmap, same rows as C
 FN = {'log_notional': 'Total notional', 'maker_share': 'Maker share', 'log_med_order': 'Order size', 'log_cancel_to_fill': 'Cancel-to-fill',
@@ -153,8 +162,8 @@ cax = ja._px_axes(fig, 1444, RT, 12, RP * n)
 cb = fig.colorbar(im, cax=cax, ticks=[-3, 0, 3]); cb.outline.set_visible(False)
 cb.ax.set_yticklabels(["-3", "0", "+3"]); cb.ax.tick_params(labelsize=9, colors=C['muted']); cb.ax.grid(False)
 
-fig.text(48 / W, 1 - (H - 76) / H,
-         f"Robustness: HDBSCAN on the raw features finds no clusters in {ra['boot_nclusters'].get('0', 0)} of 200 resamples; "
+fig.text(48 / W, 1 - ((RB + 150) if MANY else (H - 76)) / H,
+         f"Robustness: HDBSCAN on the raw features finds no clusters in {ra['boot_nclusters'].get('0', 0)} of 200 resamples;" + ("\n" if MANY else " ") +
          f"UMAP then HDBSCAN bootstrap ARI median {rb['boot_ari'][2]:.2f}.",
          color=C['muted'], family=ja.MONO, fontsize=9.5, va="baseline")
 

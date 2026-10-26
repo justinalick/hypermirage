@@ -51,4 +51,4 @@ fig.text(*px(x, y0 + 3 * lh + 28), f"xyz:SP500  ·  {n_orders / 1e6:.0f}M orders
          family=ja.MONO, fontsize=10.5, color=C["faint"], va="baseline")
 ja.handle_row(fig, x, H - (y0 + 3 * lh + 84), align="left")   # above the domain label X overlays bottom-left
 fig.add_artist(Rectangle((0, 0), 1, 1, transform=fig.transFigure, fill=False, ec=C["frame"], lw=4, zorder=100))
-fig.savefig("out/og-xyz-sp500-v4.png", dpi=DPI, facecolor=C["ground"])
+fig.savefig("out/og-xyz-sp500-v4.png" if WIN.IS_ATLAS else f"out/og-xyz-sp500-{WIN.DAYS[0]}-{WIN.DAYS[-1]}.png", dpi=DPI, facecolor=C["ground"])

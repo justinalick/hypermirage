@@ -13,6 +13,8 @@ D = 'data/derived/offhours/offhours_depth_minutes.parquet'
 df = duckdb.sql(f"select * from '{D}' order by t").df()
 df['r'] = np.log(df.mid).diff() * 1e4
 df['rv'] = df.r.rolling(15, min_periods=12).std() * np.sqrt(365 * 1440) / 100
+flat = df.r.rolling(15, min_periods=12).max() == df.r.rolling(15, min_periods=12).min()
+df.loc[flat, 'rv'] = 0.0                 # equal returns: rolling std leaves float residue instead of 0
 h = df.t.dt.hour
 s_ = WIN.session(df.t)
 wk = s_ == 'closed'

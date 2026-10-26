@@ -67,9 +67,11 @@ for j, (ax, (k, rk, lab, role)) in enumerate(zip(axs, B)):
                     family="IBM Plex Sans")
         if k == "lt10k" and h == 10:   # LED beside the median box, not on it
             ja.signal(ax, i - 0.14, med, ms=0, role="actual")
-            ja.label_at(ax, i, -0.88, f"ahead in {ahead[10]:.0%} at 10s", "actual", dy=0, size=LB).set_bbox(None)
+            t = ja.label_at(ax, i, -0.88, f"ahead in {ahead[10]:.0%} at 10s", "actual", dy=0, size=LB)
+            if WIN.IS_ATLAS: t.set_bbox(None)   # long windows: knockout, the violin tails reach the label
         if k == "lt10k" and h == 1:
-            ja.label_at(ax, i + 0.05, 0.72, f"ahead in {ahead[1]:.0%}\nat 1s", "actual", dy=0, size=LB).set_bbox(None)
+            t = ja.label_at(ax, i + 0.05, 0.72, f"ahead in {ahead[1]:.0%}\nat 1s", "actual", dy=0, size=LB)
+            if WIN.IS_ATLAS: t.set_bbox(None)
     ax.set_xticks(range(3), HL, fontsize=11); ax.set_xlim(-0.55, 2.55); ax.set_ylim(*YL)
     ax.set_yticks([-1.5, -1, -0.5, 0, 0.5, 1, 1.5])
     if j == 0:
@@ -82,9 +84,10 @@ for j, (ax, (k, rk, lab, role)) in enumerate(zip(axs, B)):
     if j == 1:   # shared x: one label under the middle panel
         ax.set_xlabel("time after fill", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
 
-_k = ja.note_at(axs[1], -0.48, -1.22, "box: middle 50% of hours\ndiamond: pooled mean, 95% CI\narrows: beyond the axis",
+_k = ja.note_at(axs[1], -0.48, -1.22 if WIN.IS_ATLAS else -1.0, "box: middle 50% of hours\ndiamond: pooled mean, 95% CI\narrows: beyond the axis",
                "muted", size=10)
-_k.set_bbox(None); _k.set_ha("left")
+_k.set_ha("left")
+if WIN.IS_ATLAS: _k.set_bbox(None)
 
 ja.finish(fig, f"Orders under $10k are ahead in {ahead[10]:.0%} of hours at 10s", hl=f"{ahead[10]:.0%}",
           subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, taker markout per UTC hour, bps",

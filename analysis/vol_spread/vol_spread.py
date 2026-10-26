@@ -20,6 +20,8 @@ m = duckdb.sql(f"""SELECT d.t, d.mid, d.d10, s.tw_spread_bps sp
     LEFT JOIN '{R}vol_spread/spread_minutes.parquet' s USING (t) ORDER BY d.t""").df()
 m["r"] = np.log(m.mid).diff() * 1e4
 m["rv"] = m.r.rolling(15, min_periods=12).std() * np.sqrt(365 * 1440) / 100
+flat = m.r.rolling(15, min_periods=12).max() == m.r.rolling(15, min_periods=12).min()
+m.loc[flat, "rv"] = 0.0                  # equal returns: rolling std leaves float residue instead of 0
 h = m.t.dt.hour
 es = WIN.es_state(m.t)                    # holiday-aware CME clock: open, break, closed
 wk = es == "closed"
@@ -64,7 +66,7 @@ json.dump({"n_minutes": int(len(m)), "n_minutes_by_es": {e: int(len(g)) for e, g
           open(OUT + "vol_spread_meta.json", "w"))
 # published values: gap and 90% CI, top vs bottom volatility decile (atlas and README)
 want = {("open", "sp"): (18.9, 14.7, 24.1), ("open", "dep"): (-1.2, -4.9, 2.4),
-        ("closed", "sp"): (56.8, 10.5, 135.2), ("closed", "dep"): (-19.2, -29.4, -3.0)}
+        ("closed", "sp"): (56.8, 7.8, 135.2), ("closed", "dep"): (-19.1, -29.4, -3.2)}   # one flat weekend minute dropped (exact zero vol)
 for k in want:
     WIN.expect(f"vol_spread gap and 90% CI {k}", [round(v, 1) for v in got[k]], list(want[k]), tol=0.15)
 if WIN.IS_ATLAS:
