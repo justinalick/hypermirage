@@ -89,7 +89,8 @@ ja.line(b, c.Q, c.obs_meta_i0, "actual", lw=3)
 b.set_xlim(8e2, 1.25e6); b.set_ylim(0.01, 10)
 b.xaxis.set_major_formatter(FuncFormatter(lambda v, _: f"${v/1e3:,.0f}k" if v < 1e6 else f"${v/1e6:,.0f}M"))
 xe = c.Q.iloc[-1] * 1.18                                       # labels just right of the line ends
-txt(b, xe, c.obs_meta_i0.iloc[-1], f"metaorders\nn={int(c.n_meta.sum()):,}", "actual", linespacing=1.3)
+txt(b, xe, c.obs_meta_i0.iloc[-1] * (1 if WIN.IS_ATLAS else 1.1), f"metaorders\nn={int(c.n_meta.sum()):,}", "actual",
+    va="center" if WIN.IS_ATLAS else "bottom", linespacing=1.3)
 txt(b, xe, c.book_mean.iloc[-1] * 1.12, "top-20 book", "model", va="bottom")
 txt(b, xe, c.obs_order_i0.iloc[-1] * 0.95, f"single orders\nn={int(c.n_ord.sum()):,}", "muted", va="top", linespacing=1.3)
 i10 = int(np.argmin(np.abs(c.Q - 1e4)))

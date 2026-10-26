@@ -4,7 +4,7 @@ by price rank. Native modify and separate cancel+place cannot be told apart in t
 import sys, duckdb
 ROOT = "."
 days = sys.argv[1:]
-con = duckdb.connect(); con.execute("SET threads=6; SET memory_limit='10GB'")
+con = duckdb.connect(); con.execute("SET threads=4; SET memory_limit='4GB'")
 for d in days:
     con.execute(f"""
     CREATE OR REPLACE TEMP TABLE e AS SELECT user, oid, side, block_number b, status, limit_px px, sz, orig_sz

@@ -127,6 +127,7 @@ def main() -> int:
         return 1
 
     con = duckdb.connect()
+    con.execute("SET memory_limit = '4GB'")   # spills to disk beyond this; keeps a day within a shared 16 GB machine
     con.execute("CREATE TABLE lc AS SELECT * FROM read_parquet(?)", [lc_path]).fetchall()
 
     t0 = time.time()

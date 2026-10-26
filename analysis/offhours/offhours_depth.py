@@ -20,7 +20,7 @@ def with_session(con, table, col):
 
 
 con = duckdb.connect()
-con.execute("SET TimeZone='UTC'; SET threads=6; SET memory_limit='9GB'")
+con.execute("SET TimeZone='UTC'; SET threads=4; SET memory_limit='6GB'")   # one day at a time; leaves room for a second lane
 con.execute("CREATE TABLE snaps (t TIMESTAMP, mid DOUBLE, d5 DOUBLE, d10 DOUBLE, d25 DOUBLE, d_all DOUBLE)")
 for day in WIN.DAYS:
     con.execute(f"""CREATE OR REPLACE TEMP TABLE clock AS SELECT block_number blk, min(epoch_ms(block_time::TIMESTAMP)) ms

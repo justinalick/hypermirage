@@ -34,8 +34,18 @@ ax.set_xticks([0, 1, 2, 3, 4, 5, 6, 7]); ax.xaxis.set_major_formatter(FuncFormat
 ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.0f}%"))
 # direct labels to the right of each line end
 offs = {"favorable 2+": 0, "favorable 1": 9, "adverse 2+": -9, "adverse 1": 0, "control": 0}
+yl = {g: v[1][-1] for g, v in cur.items()}
+if not WIN.IS_ATLAS:   # other windows: spread the end labels to a minimum gap, keeping their order
+    sep = 0.075 * np.diff(ax.get_ylim())[0]
+    order = sorted(yl, key=yl.get); offs = dict.fromkeys(yl, 0)
+    for lo_, hi_ in zip(order, order[1:]):
+        yl[hi_] = max(yl[hi_], yl[lo_] + sep)
+    shift = (sum(v[1][-1] for v in cur.values()) - sum(yl.values())) / len(yl)   # recenter on the line ends
+    yl = {g: v + shift for g, v in yl.items()}
+    for lo_, hi_ in zip(order, order[1:]):
+        yl[hi_] = max(yl[hi_], yl[lo_] + sep)
 for g, (x, y, n, lab, role) in cur.items():
-    t = ja.label_at(ax, x[-1] + 0.08, y[-1], f"{lab} n={n/1e6:.1f}M", role, dy=offs[g] - 5, ha="left", size=10.5)
+    t = ja.label_at(ax, x[-1] + 0.08, yl[g], f"{lab} n={n/1e6:.1f}M", role, dy=offs[g] - 5, ha="left", size=10.5)
 i1 = int(round(1000 / MS))   # blocks in 1.0 s (14 at ~71.5 ms)
 xf, yf = cur["favorable 2+"][0][i1], cur["favorable 2+"][1][i1]
 yc = cur["control"][1][i1]

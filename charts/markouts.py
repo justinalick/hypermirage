@@ -64,16 +64,21 @@ a.fill_between(x, lt, ht, color=ja.C["tint_actual"], lw=0, zorder=0.7)
 ja.line(a, x, mm, "faint", lw=2.5, ls=(0, (4, 3)), marker="o", ms=5)
 ja.line(a, x, mt, "actual", lw=3, marker="o", ms=5.5)
 a.set_xlim(-0.4, len(H) + 0.6)          # room for direct end labels past the 5m point
-ja.label_at(a, 10.25, mt[-1], "taker", "actual", dy=-5, ha="left", size=LB).set_bbox(None)
-ja.label_at(a, 10.25, mm[-1], "maker", "faint", dy=-5, ha="left", size=LB).set_bbox(None)
+# end labels: pushed apart when the two lines end close together
+sep = 0.1 * (YHI - YLO) / 1.55
+yt, ym = mt[-1], mm[-1]
+if abs(yt - ym) < sep:
+    mid_ = (yt + ym) / 2; yt, ym = (mid_ - sep / 2, mid_ + sep / 2) if yt <= ym else (mid_ + sep / 2, mid_ - sep / 2)
+ja.label_at(a, 10.25, yt, "taker", "actual", dy=-5, ha="left", size=LB).set_bbox(None)
+ja.label_at(a, 10.25, ym, "maker", "faint", dy=-5, ha="left", size=LB).set_bbox(None)
 ja.signal(a, 0, mt[0], dx=14, dy=-30, size=LB, ms=0, role="actual")
 nobox(ja.label_at(a, 0.25, mt[0], f"{mt[0]:.2f} at fill", "actual", dy=-34, ha="left", size=LB))
 pos = [i for i in range(1, len(H)) if mt[i] > 0]
 late = (mt[H.index("120")] + mt[H.index("300")]) / 2
 if pos and all(mt[i] > 0 for i in range(pos[0], len(H))):
-    ja.note_at(a, 4.6, YHI - 0.1, f"taker turns positive after about {XL[pos[0]]},\nabout {late:+.2f} bps at 2 to 5 min", "ink", size=10.5)
+    ja.note_at(a, 4.6, YHI - 0.1 if WIN.IS_ATLAS else YLO + 0.25 * (YHI - YLO) / 1.55, f"taker turns positive after about {XL[pos[0]]},\nabout {late:+.2f} bps at 2 to 5 min", "ink", size=10.5)
 else:
-    ja.note_at(a, 4.6, YHI - 0.1, f"taker markout {late:+.2f} bps at 2 to 5 min", "ink", size=10.5)
+    ja.note_at(a, 7.8, YLO + 0.3 * (YHI - YLO) / 1.55, f"taker markout {late:+.2f} bps\nat 2 to 5 min", "ink", size=10.5)
 ja.panel_title(a, "all fills, taker vs maker (95% CI)", size=LB)
 
 # right: taker markout by order size (key band only: under $10k; grey band for $100k and over)
@@ -85,11 +90,11 @@ for k, role, _ in B:
     ja.line(b, x, m, role, lw=3 if role == "actual" else 2.5, marker="o", ms=5)
 n = r["n_orders_by_bucket"]
 for i, (k, role, lab) in enumerate(B[::-1]):
-    ja.label_at(b, -0.2, 0.48 - 0.105 * i, f"{lab}  ({n[k]:,} orders)", role, dy=0, ha="left", size=LB)
+    ja.label_at(b, -0.2, (0.48 if WIN.IS_ATLAS else YHI - 0.17) - 0.105 * (YHI - YLO) / 1.55 * i, f"{lab}  ({n[k]:,} orders)", role, dy=0, ha="left", size=LB)
 net = r["< $10k"]["60"][0] - F["taker_lt10k"]
-nobox(ja.note_at(b, 5.75, YLO + 0.32, f"gross of fees: avg taker fee {F['taker']:.2f} bps\n"
+nobox(ja.note_at(b, 5.75 if WIN.IS_ATLAS else 5.9, YLO + (0.32 if WIN.IS_ATLAS else 0.2), f"gross of fees: avg taker fee {F['taker']:.2f} bps\n"
                  f"incl. builder fees (exchange alone {F['taker_ex_builder']:.2f})\n"
-                 f"under $10k pay {F['taker_lt10k']:.2f}: " + (f"about {-net:.0f} bp underwater" if net < 0 else f"{net:+.1f} bp net at 1m"), "muted", size=10.5))
+                 f"under $10k pay {F['taker_lt10k']:.2f}: " + (f"about {-net:.0f} bp underwater" if net < 0 and WIN.IS_ATLAS else f"about {-net:.1f} bp underwater" if net < 0 else f"{net:+.1f} bp net at 1m"), "muted", size=10.5))
 ja.panel_title(b, "taker side, by taker order size", size=LB)
 
 follows = late > 0

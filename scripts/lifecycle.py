@@ -151,6 +151,7 @@ def main() -> int:
     have_fills = bool(fills) and os.path.exists(fills)
 
     con = duckdb.connect()
+    con.execute("SET memory_limit = '4GB'")   # spills to disk beyond this; keeps a day within a shared 16 GB machine
     if have_fills:
         con.execute("""CREATE TABLE fo AS SELECT order_id, sum(CAST(size AS DOUBLE)) AS fill_sz
                        FROM read_parquet(?) WHERE coin = ? GROUP BY order_id""", [fills, args.coin]).fetchall()

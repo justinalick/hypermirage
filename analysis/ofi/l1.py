@@ -18,7 +18,7 @@ OUT = f"{ROOT}/data/derived/ofi/l1"
 def day(d):
     t0 = time.time()
     iso = f"{d[:4]}-{d[4:6]}-{d[6:]}"
-    con = duckdb.connect(); con.execute("SET threads=2")
+    con = duckdb.connect(); con.execute("SET threads=2; SET memory_limit='4GB'")
     con.execute(f"CREATE TABLE lc AS SELECT * FROM '{ROOT}/data/derived/lifecycle/xyz_SP500/{d}.parquet'")
     con.execute(f"""CREATE TABLE st AS SELECT block_number b, epoch_ns(block_time::timestamp) tn, oid, status, sz
                     FROM read_parquet('{ROOT}/data/l4/order_statuses/xyz_SP500/{d}/*.parquet')""")

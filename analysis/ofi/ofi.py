@@ -12,7 +12,7 @@ sys.path.insert(0, "scripts")
 import window as WIN
 ROOT = "."; OUT = f"{ROOT}/data/derived/ofi"
 con = duckdb.connect()
-L = con.execute(f"""select block, t_ns, bid_px, bid_sz, ask_px, ask_sz, regexp_extract(filename,'(\\d{{8}})',1) d
+L = con.execute(f"""select block, t_ns, bid_px, bid_sz, ask_px, ask_sz, cast(regexp_extract(filename,'(\\d{{8}})',1) as integer) d
   from read_parquet('{OUT}/l1/*.parquet', filename=true) order by block""").fetchnumpy()
 t = L["t_ns"].astype(np.int64); bp, bs, ap, as_ = L["bid_px"], L["bid_sz"], L["ask_px"], L["ask_sz"]
 d = L["d"]

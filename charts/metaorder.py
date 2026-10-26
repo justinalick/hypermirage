@@ -43,10 +43,14 @@ lo_band, hi_back = np.interp(xs, u, Q['spread out'][0]).min(), np.interp(xs, u, 
 xb = np.linspace(0.42, 0.75, 40)
 pos = {'front-loaded': (0.04, 0.985), 'spread out': (0.45, (lo_band + hi_back) / 2),
        'back-loaded': (0.42, max(0.035, np.interp(xb, u, Q['back-loaded'][1]).min() - 0.055))}
-if WIN.IS_ATLAS and n_by['spread out'] == 6479:          # the published atlas layout
+ATL = WIN.IS_ATLAS and n_by['spread out'] == 6479
+if ATL:                                                  # the published atlas layout
     pos = {'front-loaded': (0.04, 0.985), 'spread out': (0.45, 0.33), 'back-loaded': (0.16, 0.15)}
+else:                                                    # two lines, so it fits between the diagonal and the back-loaded IQR
+    pos['spread out'] = (0.5, pos['spread out'][1])
 for nm, (x_, y_) in pos.items():
-    t = ja.label_at(a, x_, y_, f"{nm} {n_by[nm]:,}", ROLE[nm], dy=0, ha="left", size=LB); t.set_bbox(None); t.set_va("center")
+    sep = "\n" if nm == 'spread out' and not ATL else " "
+    t = ja.label_at(a, x_, y_, f"{nm}{sep}{n_by[nm]:,}", ROLE[nm], dy=0, ha="left", size=LB); t.set_bbox(None); t.set_va("center")
 ja.panel_title(a, "fill path, median  (IQR: shade, dotted)", size=LB)
 a.set_xlabel("elapsed share of duration, %", **AX); a.set_ylabel("share of metaorder filled, %", **AX)
 

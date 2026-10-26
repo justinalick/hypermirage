@@ -45,8 +45,7 @@ def est(mask):
         bs = sx[draws].sum(1)/np.maximum(sw[draws].sum(1), 1e-9)
         o[h] = [float(sx.sum()/sw.sum()), float(np.percentile(bs, 2.5)), float(np.percentile(bs, 97.5))]
     return o
-tot = {}
-for k in np.unique(c): tot[k] = nt[c == k].sum()
+tot = pd.Series(nt).groupby(c).sum().to_dict()          # notional per cluster, one pass
 rank = sorted(tot, key=lambda k: -tot[k]); lab = {k: f"T{i+1}" for i, k in enumerate(rank[:10])}
 res = {"clusters": {}, "sessions": {}, "makers_vs_T1": {}, "meta": {}}
 T1 = c == rank[0]
@@ -60,8 +59,7 @@ for ss in ["Cash hours", "ES overnight", "ES closed"]:
         "hours": int(len(np.unique(hour[sm]))), "T1_share": float(nt[T1 & sm].sum()/nt[sm].sum()),
         "T1_notional_share_of_T1": float(nt[T1 & sm].sum()/nt[T1].sum()), "all_share_of_all": float(nt[sm].sum()/nt.sum())}
 # makers T1 hits: top 5 maker clusters by notional vs T1
-mt = {}
-for k in np.unique(mc[T1]): mt[k] = nt[T1 & (mc == k)].sum()
+mt = pd.Series(nt[T1]).groupby(mc[T1]).sum().to_dict()  # T1 notional per maker cluster, one pass
 mr = sorted(mt, key=lambda k: -mt[k])[:5]
 for i, k in enumerate(mr):
     e = est(T1 & (mc == k)); e["share_of_T1"] = float(mt[k]/nt[T1].sum()); res["makers_vs_T1"][f"M{i+1}"] = e

@@ -82,7 +82,7 @@ xfmt(aR, 0.45); aR.set_ylim(*ja.fit(-22, 38, p(shown.rel), 4))
 aR.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:+.0f}%" if v else "0%"))
 c = dec[dec.k == "cash"].sort_values("q")
 ja.signal(aR, c.rv.iloc[-1], p(c.rel.iloc[-1]), ms=0)
-ja.label_at(aR, 42, -9.5, f"cash: {gap['cash']:+.1f}%", "actual", dy=0, ha="right", size=LB)
+ja.label_at(aR, 42, -9.5 if WIN.IS_ATLAS else 4.5, f"cash: {gap['cash']:+.1f}%", "actual", dy=0, ha="right", size=LB)
 ja.label_at(aR, 14, 9.5, f"overnight: {gap['overnight']:+.1f}%", "model", dy=0, ha="center", size=LB)
 if POOLED_CLOSED:
     ja.label_at(aR, 1.45, aR.get_ylim()[1] - 5, f"futures closed: {gap['closed']:+.1f}%", "faint", dy=0, ha="left", size=LB)

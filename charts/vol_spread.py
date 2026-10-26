@@ -56,7 +56,7 @@ aL.set_ylim(*lim("sp", -35, 25))
 aR.set_ylim(*lim("dep", -12, 18))
 o = dec[dec.es == "open"]
 ja.signal(aL, np.exp(o.rv.iloc[-1]), p(o.sp.iloc[-1]), ms=0)
-ja.label_at(aL, 2.9, 19.5, f"futures open: {gap['open', 'sp']:+.0f}%", "actual", dy=0, ha="right", size=LB)
+ja.label_at(aL, 2.9, 19.5 if WIN.IS_ATLAS else -12, f"futures open: {gap['open', 'sp']:+.0f}%", "actual", dy=0, ha="right", size=LB)
 ja.label_at(aL, 0.3, aL.get_ylim()[0] + 2, "futures closed: noisy" if WIN.IS_ATLAS else f"futures closed: {gap['closed', 'sp']:+.0f}%",
             "model", dy=0, ha="left", size=LB)
 ja.panel_title(aL, "quoted spread, time-weighted", size=LB)

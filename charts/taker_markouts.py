@@ -65,7 +65,7 @@ t1, ot = cl["T1"], cl["All except T1"]
 ja.signal(a, 3, t1["60"][0], label=f"{t1['60'][0]:+.2f} bps", dx=12, dy=-5, size=LB, ms=0, role="actual")
 ylo_a, yhi_a = a.get_ylim()
 ja.label_at(a, -0.1, yhi_a - 0.1, f"largest taker T1, {100 * m['T1_share']:.0f}% of notional", "actual", dy=0, ha="left", size=LB)
-ja.label_at(a, 1.6, -0.36 if WIN.IS_ATLAS else ot["10"][0] - 0.12, "all other takers", "model", dy=0, ha="left", size=LB)
+ja.label_at(a, 1.6 if WIN.IS_ATLAS else 0.15, -0.36 if WIN.IS_ATLAS else (t1["0"][0] + ot["1"][0]) / 2, "all other takers", "model", dy=0, ha="left", size=LB)
 ja.note_at(a, 2.0, ylo_a + 0.07, f"taker fees: T1 ~{FEE[True]:.2f}, others ~{FEE[False]:.2f}", role="muted", size=LB)
 ja.panel_title(a, "T1 vs the rest (maker markout = minus)", size=LB)
 a.set_xlabel("time after fill", **AX); a.set_ylabel("taker markout, bps", **AX)

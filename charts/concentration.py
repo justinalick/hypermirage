@@ -41,7 +41,7 @@ if len(days) > 21:      # long windows: a daily series instead of one labeled ba
     ja.label_at(ax, x0 + pd.Timedelta(days=0.11 * len(t)), 95, "#2 and #3", "faint", dy=0, ha="left", size=LB)
     ja.label_at(ax, x0 + pd.Timedelta(days=0.24 * len(t)), 95, "#4 to #10", "muted", dy=0, ha="left", size=LB)
     ja.label_at(ax, x0, 87.5, f"dashed: top 3, {len(t)} days pooled, {P:.1f}%", "ink", dy=0, ha="left", size=LB)
-    ja.label_at(ax, x0 + pd.Timedelta(days=0.36 * len(t)), 87.5, f"blue line: top 3, declared sub-accounts merged ({PG:.1f}% pooled)",
+    ja.label_at(ax, x0, 80.0, f"blue line: top 3, declared sub-accounts merged ({PG:.1f}% pooled)",
                 "model", dy=0, ha="left", size=LB)
     for tx in ax.texts:
         if getattr(tx, "_ja_label", False):
