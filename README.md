@@ -148,7 +148,10 @@ copied back:
 bash scripts/tokyo/launch.sh <your-ip> <your-ssh-public-key>
 # on the instance (bootstrap asks for your read-only node-data credentials and config)
 git clone https://github.com/justinalick/hypermirage && bash hypermirage/scripts/tokyo/bootstrap.sh
-cd hypermirage && scripts/node_extract_day.sh order_statuses 20261008 20261021   # at most 31 days per call
+cd hypermirage
+for r in "20260425 20260525" "20260526 20260625" "20260626 20260726" "20260727 20260826" "20260827 20260926" "20260927 20261024"; do
+  scripts/node_extract_day.sh order_statuses $r   # the six-month window, at most 31 days per call
+done
 # locally: copy the extracts back into data/l4/ (scripts/tokyo/remote.sh pull), then terminate
 bash scripts/tokyo/teardown.sh
 ```
@@ -169,6 +172,8 @@ python3 -m venv .venv
 ## Reproduce
 
 ```bash
+git checkout <commit>                        # optional: the exact code the published page links (shown on the page)
+export HM_START=20260425 HM_END=20261024     # the six-month page; leave unset for the two-week first edition
 ./run.sh fetch        # Reservoir fills + 1m L2 for the window
 ./run.sh pipeline     # per day: order lifecycles (scripts/lifecycle.py), book replay (scripts/touch.py),
                       # top of book with sizes and same-block amend pairs; days already built are skipped
@@ -178,8 +183,8 @@ python3 -m venv .venv
 ./run.sh checks       # independent recomputes (different code paths) of the published numbers
 ```
 
-**Window.** Every step runs on the UTC days from `HM_START` to `HM_END` (YYYYMMDD, inclusive). The default is
-2026-10-08 to 2026-10-21, the window of the two-week atlas, where the scripts assert that the published
+**Window.** Every step runs on the UTC days from `HM_START` to `HM_END` (YYYYMMDD, inclusive). The published
+page is 2026-04-25 to 2026-10-24. The default is 2026-10-08 to 2026-10-21, the window of the two-week atlas, where the scripts assert that the published
 numbers come out again. Any other window, for example `HM_START=20260425 HM_END=20261024 ./run.sh all`,
 prints its own numbers next to the atlas values instead. Per-day files (lifecycles, replayed book, top of
 book, amend pairs) are shared by all windows; everything else is written to a per-window folder,
