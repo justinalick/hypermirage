@@ -44,7 +44,7 @@ import window as WIN
 n_orders = json.load(open("data/derived/chart_cache/survival.json"))["meta"]["n"]
 cmp = pd.DataFrame(json.load(open("data/derived/impact/robust.json"))["dollar_cmp"])
 cmp = cmp[(cmp.Q <= 1.01e6) & (cmp.Q >= 1e3)]; ratio = cmp.obs_meta_i0 / cmp.book_mean
-r_lo, r_small = ratio[cmp.Q >= 1e4].min(), ratio[cmp.Q <= 1.01e4].median()
+r_lo, r_small = ratio.min(), ratio.max()   # the full range over $1k to $1M, as stated in the impact section
 fig.text(*px(x, y0 + 3 * lh - 8), f"Partly. Metaorders move price about {round(r_lo)} to {round(r_small)}x more than the book implies.",
          family=ja.SANS, fontsize=13, color=C["muted"], va="baseline")
 fig.text(*px(x, y0 + 3 * lh + 28), f"xyz:SP500  ·  {n_orders / 1e6:.0f}M orders  ·  {WIN.label()}",

@@ -29,7 +29,8 @@ if (/claude\.ai/i.test(page)) fail("the page links claude.ai");
 rmSync("dist", { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 cpSync("report/index.html", `${out}/index.html`);
-cpSync("report/og-xyz-sp500-v4.png", `${out}/og-xyz-sp500-v4.png`);
+cpSync("report/og-xyz-sp500-v5.png", `${out}/og-xyz-sp500-v5.png`);
+cpSync("report/og-xyz-sp500-v4.png", `${out}/og-xyz-sp500-v4.png`);   // kept for previews already shared
 cpSync("report/og-xyz-sp500-v3.png", `${out}/og-xyz-sp500-v3.png`);   // kept for previews already shared
 cpSync("report/og-xyz-sp500-v2.png", `${out}/og-xyz-sp500-v2.png`);   // kept for previews already shared
 cpSync("LICENSE", `${out}/LICENSE`);
@@ -62,6 +63,9 @@ writeFileSync("dist/_headers", `${BASE}/*
 
 ${BASE}/
   Cache-Control: public, max-age=0, must-revalidate, no-transform
+
+${BASE}/og-xyz-sp500-v5.png
+  Cache-Control: public, max-age=3600
 
 ${BASE}/og-xyz-sp500-v4.png
   Cache-Control: public, max-age=3600

@@ -226,7 +226,7 @@ the impact ratio from the run's outputs. The first-version figure scripts kept i
 `analysis/impact/plot.py`) describe the atlas window in their text and refuse other windows; `charts/` has
 the current version of each.
 
-`report/` holds the published page (`report/index.html`, `report/og-xyz-sp500-v4.png`). `node scripts/build.mjs` builds it into
+`report/` holds the published page (`report/index.html`, `report/og-xyz-sp500-v5.png`). `node scripts/build.mjs` builds it into
 `dist/` with its security headers for justinalick.com/projects/hypermirage; the build fails if the page would load anything
 from another site.
 
