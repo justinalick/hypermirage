@@ -50,7 +50,10 @@ for day, iso in zip(WIN.DAYS, WIN.ISO):
         WHERE coin = 'xyz:SP500' AND NOT crossed AND order_id IN (SELECT oid FROM rest)""")
     # sample blocks: last block of each minute (as in the chart) and every L2 snapshot block
     con.execute(f"""CREATE OR REPLACE TEMP TABLE smp AS
-        WITH m AS (SELECT ms // 60000 AS mn, max(blk) blk FROM clock GROUP BY 1)
+        WITH m AS (SELECT ms // 60000 AS mn, max(blk) blk FROM clock
+                   WHERE ms >= epoch_ms(TIMESTAMP '{iso}')                  -- this UTC day only: the last hourly
+                     AND ms < epoch_ms(TIMESTAMP '{iso}') + 86400000        -- order-status file can reach past midnight
+                   GROUP BY 1)
         SELECT 'min' kind, m.mn, m.blk, (b.best_bid + b.best_ask) / 2 mid, NULL::DOUBLE lo, NULL::DOUBLE hi
         FROM m ASOF JOIN '{R}/data/derived/bbo/xyz_SP500/{day}.parquet' b ON b.block <= m.blk
         WHERE b.best_bid IS NOT NULL AND b.best_ask IS NOT NULL

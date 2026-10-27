@@ -22,7 +22,7 @@ Checks
   6. Hourly means behind the violins.
 
 Usage: .venv/bin/python analysis/markout/rerun/verify_markouts.py [--root .]
-Memory: one day of order statuses at a time; DuckDB capped at 1.5 GB, 2 threads.
+Memory: one day of order statuses at a time; DuckDB capped at 1.5 GB (5 GB beyond two weeks, spilling to data/tmp), 2 threads.
 """
 import argparse, json, os
 import duckdb
@@ -41,7 +41,9 @@ DAYS = WIN.DAYS
 H = [0, 0.5, 1, 2, 5, 10, 20, 30, 60, 120, 300]
 
 con = duckdb.connect()
-con.execute("set memory_limit='1500MB'; set threads=2; set preserve_insertion_order=false")
+con.execute("set memory_limit='%s'; set threads=2; set preserve_insertion_order=false" % ("1500MB" if WIN.N_DAYS <= 14 else "5GB"))
+os.makedirs("data/tmp/duckdb_markout_check", exist_ok=True)
+con.execute("set temp_directory='data/tmp/duckdb_markout_check'")   # the cross-day trade joins spill over long windows
 rep = {}
 
 # ---- taker and maker legs -------------------------------------------------------------------
