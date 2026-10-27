@@ -40,7 +40,8 @@ mkdirSync(out, { recursive: true });
 cpSync("report/index.html", `${out}/index.html`);
 mkdirSync(`${out}/charts`, { recursive: true });
 for (const c of charts) cpSync(`report/${c}`, `${out}/${c}`);
-cpSync("report/og-xyz-sp500-v5.png", `${out}/og-xyz-sp500-v5.png`);
+cpSync("report/og-xyz-sp500-v6.png", `${out}/og-xyz-sp500-v6.png`);
+cpSync("report/og-xyz-sp500-v5.png", `${out}/og-xyz-sp500-v5.png`);   // kept for previews already shared
 cpSync("report/og-xyz-sp500-v4.png", `${out}/og-xyz-sp500-v4.png`);   // kept for previews already shared
 cpSync("report/og-xyz-sp500-v3.png", `${out}/og-xyz-sp500-v3.png`);   // kept for previews already shared
 cpSync("report/og-xyz-sp500-v2.png", `${out}/og-xyz-sp500-v2.png`);   // kept for previews already shared
@@ -77,6 +78,9 @@ ${BASE}/
 
 ${BASE}/charts/*
   Cache-Control: public, max-age=31536000, immutable
+
+${BASE}/og-xyz-sp500-v6.png
+  Cache-Control: public, max-age=3600
 
 ${BASE}/og-xyz-sp500-v5.png
   Cache-Control: public, max-age=3600
