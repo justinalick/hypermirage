@@ -17,6 +17,7 @@ rows = con.execute("""
     FROM r GROUP BY 1 ORDER BY 1""").fetchall()
 con.close()
 km = json.load(open(f"{Q}/km.json"))
+head = duckdb.sql(f"SELECT sum(fifo_head) / sum(fills) FROM '{Q}/fifo_check.parquet'").fetchall()[0][0]   # maker fills at the replayed head
 N = sum(r[1] for r in rows)
 
 LABELS = ["improves\ntouch", "join\n≤$5k", "join\n$5-25k", "join\n$25-100k", "join\n$100-250k", "join\n>$250k"]
@@ -46,7 +47,7 @@ a.set_xlim(-0.6, len(rows) - 0.4)
 ja.label_at(a, 2.4, 14.6, "all order sizes", "actual", dy=0, ha="left", size=10)
 ja.label_at(a, 2.4, 12.8, "own order $5-15k only", "model", dy=0, ha="left", size=10)
 ja.panel_title(a, "touch orders with any fill, by queue ahead", size=10)
-a.set_xlabel("queue ahead at entry", **AX); a.set_ylabel("orders with any fill, %", **AX)
+a.set_xlabel("queue ahead at entry, $", **AX); a.set_ylabel("orders with any fill, %", **AX)
 
 # ---- B: cumulative fill probability by time resting
 b = ja._px_axes(fig, 920, 228, 400, 396)
@@ -54,7 +55,7 @@ tt = [g for g in km["grid"] if g <= 5]
 names = sorted(km["km"])
 for i, qb in enumerate(names):
     y = km["km"][qb][:len(tt)]
-    role = "actual" if i == 0 else "model" if i == len(names) - 1 else "faint"
+    role = "actual" if i == 0 else "muted" if i == len(names) - 1 else "faint"   # "model" is the $5-15k bars in panel A
     ja.line(b, tt, y, role, lw=2.5 if role != "faint" else 1.6, marker="o", ms=4, zorder=3 if role != "faint" else 2)
     lab = b.annotate(SHORT[i], (tt[-1], y[-1]), xytext=(8, 0), textcoords="offset points", va="center",
                      fontsize=9, family=ja.MONO, color=C[role], weight="semibold" if role != "faint" else "regular",
@@ -63,11 +64,11 @@ b.set_xscale("log"); b.set_xlim(0.08, 6)
 b.xaxis.set_major_locator(FixedLocator(tt)); b.xaxis.set_minor_locator(NullLocator())
 b.xaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g}s"))
 b.set_ylim(0, 40); b.set_yticks([0, 10, 20, 30, 40]); b.yaxis.set_major_formatter(pct)
-ja.panel_title(b, "fill probability by time resting", size=10)
+ja.panel_title(b, "fill probability by time resting, by queue ahead", size=10)
 b.set_xlabel("time resting, log scale", **AX); b.set_ylabel("cumulative fill probability, %", **AX)
-ja.note_at(b, 0.3, 30, "cancels censored,\nindicative only", role="muted", size=9)
+ja.note_at(b, 0.42, 30, "cancelled orders censored,\nindicative only", role="muted", size=9)
 
-fig.text(48 / W, 1 - 788 / H, "FIFO queue replayed from node order statuses; 95.8% of maker fills hit the replayed queue head. "
+fig.text(48 / W, 1 - 788 / H, f"FIFO queue replayed from node order statuses; {100 * head:.1f}% of maker fills hit the replayed queue head. "
          "Queue ahead measured at entry only.", color=C['muted'], family=ja.MONO, fontsize=9.5, va="baseline")
 
 ja.finish(fig, f"Fill odds drop from {v_all[0]:.1f}% to {v_all[-1]:.1f}% behind $250k+", hl=f"{v_all[-1]:.1f}%",

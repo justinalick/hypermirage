@@ -13,7 +13,7 @@ Data partner: **[Hydromancer](https://docs.hydromancer.xyz)**.
 
 By [Justin Alick](https://justinalick.com) ([@justinalick](https://x.com/justinalick)).
 
-Research only; not investment advice.
+Research only; not investment advice. Disclosure: the author holds a long position in the xyz:SP500 perp as of October 2026 and trades it actively; the position may change at any time without notice.
 
 ---
 
@@ -28,36 +28,38 @@ HM_END=20261021 ./run.sh all` still reproduces it (see Reproduce).
 
 A **metaorder** is one account's run of consecutive taker orders on the same side, with no gap longer
 than 5 minutes (liquidations excluded); each order in the run is a child order. Its impact is the mid
-just after its last fill against the mid just before its first.
+0.25 s after its last fill against the mid just before its first.
 
 ### Five headline findings
 
-1. **Liquidity runs on the CME clock, not the stock market's.** Median depth within 10 bps of mid is
+1. **Liquidity runs mostly on the CME clock, not the stock market's.** Median depth within 10 bps of mid is
    $13.7M in US cash hours, $11.4M in other futures hours, $4.6M in the daily futures break (about two
    fifths) and $2.7M while futures are closed. A hidden Markov model finds little beyond that clock:
    session alone matches its two-state split in 93.8% of minutes.
-2. **Almost nothing on display ever trades.** 0.23% of $18.9T in displayed notional filled. 45% of 382M
-   cancels are the same account replacing an order on the same side in the same block, mostly
-   re-centering on a moved touch.
-3. **Queue position decides who gets filled.** Orders that improve the touch or join behind at most $5k
-   fill about 16% of the time; orders joining behind more than $250k fill 2.7% of the time.
-4. **Small takers are early but still lose after fees.** Takers pay about 0.67 bps to cross, and on
-   average the price does not follow them. Orders under $10k are ahead in 72% of hours at 10 s, but at
-   0.89 bps in fees they end about 0.7 bp underwater.
+2. **Almost nothing on display ever trades.** 0.23% of $18.9T in displayed notional filled (re-placed
+   orders count again). 45% of 382M cancels are the same account replacing an order on the same side in
+   the same block, often at a new price.
+3. **Short queues fill far more often.** Orders that improve the touch or join behind at most $5k get a
+   fill about 16% of the time; orders joining behind more than $250k get one 2.7% of the time.
+4. **Small takers are early but still lose after fees.** Takers cross about 0.67 bps from the mid, and
+   the mid then moves about that far their way, so they end near zero before fees. Orders under $10k are
+   ahead in 72% of hours at 10 s and +0.18 bps at 1 minute, but at 0.89 bps in fees they end about
+   0.7 bps underwater.
 5. **Metaorders move price far more than the book suggests, and most of it stays.** Impact grows with
    size to the power of about 0.35, and metaorders move the price about 2 to 7x more than one sweep of the
-   displayed book would (a single order of the same size sweeping the top 20 levels at once, with no
-   refill). For metaorders of $1M or more, 85% of the move is still there 5 minutes after the last fill.
+   typical displayed book would (a single order of the same size sweeping the top 20 levels at once, with no
+   refill, averaged over one-minute snapshots), about 2 to 3.5x from $50k up. For metaorders of $1M or more
+   whose account then stops trading for 5 minutes, 85% of the move is still there 5 minutes after the last fill.
 
 ### Also measured
 
 - **Month by month.** Cash-hours depth grew from $7.5M in May to $18.1M in July (2.4x) and was $15.6M in
-  October; the share of at-touch orders cancelled within 1 s rose from 44% to 66%.
+  October; the share of at-touch orders cancelled within 1 s rose from 44% to 70% in June, then 66% in October.
 - **Order survival.** Near the touch a quote is usually gone within a second: 60% of orders at or inside
   the touch and 57% of orders up to 1 bp behind it, against 37% of orders more than 5 bps away.
 - **Maker concentration and rotation.** The top three maker accounts supply 25.9% of maker volume pooled
   and 36% on the median day; merging declared sub-accounts gives 34.9%. The same few groups lead most
-  weeks (top-20 rank correlation 0.93 week to week), and one has ranked first for the last 17 weeks.
+  weeks (top-20 rank correlation 0.93 week to week), and one has ranked first for the last 17 weeks (rank statistics not recomputed separately).
 - **Volatility widens the spread, not the book, while futures trade.** The most volatile tenth of
   minutes has a median quoted spread 17% wider than the calmest tenth (90% CI +15% to +19%), with depth
   flat (-0.6%). With futures closed, volatile minutes are both wider (+89%) and thinner (-13%).
@@ -65,17 +67,19 @@ just after its last fill against the mid just before its first.
   one month predicts the next (r = 0.71); the largest taker sits near +0.4 bps every month.
 - **Funding and the oracle premium.** The perp trades about 3 bps below the oracle only while CME
   futures are open (median -3.2 bps, against -0.05 bps while they are closed). Funding is small next to
-  that: a constant long collected 0.66% from 2026-03-18 to 2026-10-25, about 1.1% a year.
+  that: over the six months a constant long paid 0.25%; from 2026-03-18 to 2026-10-25 it collected 0.66%,
+  about 1.1% a year.
 
 ### Null and negative results
 
 - **Depth does not thin in volatile minutes while futures trade.** Across hours depth and volatility
-  rise together (rho +0.43), but within the same day and hour volatile minutes carry about the same depth
+  rise together (correlation of logs +0.43), but relative to each hour's typical depth and its own session that
+  day, volatile minutes carry about the same depth
   (-1.8% in cash hours, +0.3% overnight).
-- **Order flow describes the move but does not forecast it.** OFI explains about 61% of same-bin price
+- **Order flow describes the move but does not forecast it.** OFI explains about 62% of same-bin price
   moves at 1 minute, but out-of-sample next-bin R-squared is 1.4% at 1 s, 0.5% at 10 s and about zero
   from 1 minute on, far below the half-spread plus fees.
-- **Execution shape does not lower cost within an account.** Spread-out metaorders look cheaper across
+- **Execution shape does not clearly lower cost within an account.** Spread-out metaorders look cheaper across
   traders (-0.29 bps against back-loaded, matched), but comparing an account with itself the gap shrinks
   to -0.13 bps (CI includes zero) and spread out costs 0.20 bps more than front-loaded.
 - **Deep discounts to the oracle do not reliably predict a bounce.** The non-overlapping daily test
@@ -285,4 +289,4 @@ that make order-level research on Hyperliquid possible.
 ## License
 
 Code is released under the MIT License (see `LICENSE`). Data remains subject to Hydromancer's
-terms. Research only; not investment advice.
+terms. Research only; not investment advice. Disclosure: the author holds a long position in the xyz:SP500 perp as of October 2026 and trades it actively; the position may change at any time without notice.

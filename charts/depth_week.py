@@ -52,7 +52,7 @@ ja.label_at(ax, 5 * 24 + 24, 7.0, "weekend", "muted", dy=0, ha="center", size=15
 r = med["break"] / df.d10_net[np.isin(s_, ["cash", "overnight"])].median() * 1e6
 words = [(0.28, 0.38, "a third"), (0.2, 0.28, "a quarter"), (0.38, 0.45, "two fifths"), (0.45, 0.55, "half")]
 frac = next((w for lo, hi, w in words if lo <= r < hi), f"{r:.0%}")
-ja.finish(fig, f"A 24/7 market whose depth falls to {frac} when CME pauses",
+ja.finish(fig, f"A 24/7 market whose depth falls to {frac} in the CME daily break",
           hl=frac,
           subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, {len(df):,} one-minute book snapshots",
           source="Data: Hydromancer Reservoir / node data. Book replay net of fills. Weekend rests on two weekends." if WIN.IS_ATLAS

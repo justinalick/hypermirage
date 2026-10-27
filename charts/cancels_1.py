@@ -48,7 +48,7 @@ for sp in ax.spines.values(): sp.set_visible(False)
 ax.set_xticks(range(len(LIFE)), [x.replace(" (<100 ms)", "\n<100 ms").replace("30 s-5 min", "30 s-\n5 min").replace("100-250 ms", "100-\n250 ms").replace("250 ms-1 s", "250 ms-\n1 s").replace("over 5 min", "over\n5 min") for x in LLBL]); ax.set_yticks(range(6), DLBL)
 ax.tick_params(length=0)
 ja.signal(ax, lj - 0.38, li - 0.14, ms=0)
-ja.panel_title(ax, "cell: % of displayed notional ever filled, and order count", size=11)
+ja.panel_title(ax, "% of displayed notional ever filled (lighter = more); below: orders", size=11)
 ax.set_xlabel("time the order rested before it was filled or pulled", color=ja.C["muted"], family=ja.MONO, fontsize=11, labelpad=8)
 ax.set_ylabel("distance from touch at placement", color=ja.C["muted"], family=ja.MONO, fontsize=11, labelpad=10)
 
@@ -59,7 +59,7 @@ bx.grid(False); bx.set_xticks([0, 10, 20, 30]); bx.xaxis.set_major_formatter(mat
 for i, x in enumerate(100 * nd.values):
     bx.text(x + 0.8, i, f"{x:.0f}%", va="center", fontsize=11, color=ja.C["ink"], weight="semibold")
 bx.spines["bottom"].set_color(ja.C["axis"])
-ja.panel_title(bx, "cancelled in same block", size=11)
+ja.panel_title(bx, "cancelled in same block,\nsame rows", size=11)
 bx.set_xlabel("share of placed orders, %", color=ja.C["muted"], family=ja.MONO, fontsize=11, labelpad=8)
 
 ja.finish(fig, f"Only {100*share:.2f}% of displayed notional ever filled", hl=f"{100*share:.2f}%",

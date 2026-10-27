@@ -97,6 +97,6 @@ ja.finish(fig, f"Depth follows CME hours: {r_brk:.2f}x in the daily break", hl=f
           subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, median depth within 10 bps of mid",
           source=(f"Data: Hydromancer Reservoir / node data. Book replay net of fills; {len(df):,} one-minute snapshots, 120 per cell."
                   if NMIN == NMAX else
-                  f"Data: Hydromancer Reservoir / node data. Book replay net of fills; {len(df):,} minutes, "
-                  f"{NMIN:,}-{NMAX:,} per cell; holidays left out."))
+                  f"Data: Hydromancer Reservoir / node data. Replay net of fills; {len(df):,} minutes, "
+                  f"{NMIN:,}-{NMAX:,} per cell; no holidays."))
 ja.save(fig, "out/heatmap.png")

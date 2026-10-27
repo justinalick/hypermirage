@@ -37,7 +37,7 @@ def binned(M, e):
 
 e = np.logspace(-6, -2, 13)
 rob = json.load(open(f"{O}/robust.json")); bw = json.load(open(f"{O}/bookwalk.json")); cmp = pd.DataFrame(rob['dollar_cmp'])
-pooled_meta, pooled_ord = rob['meta_G300'], rob['orders_i0']        # verified pooled exponents 0.38 and 0.39
+pooled_meta, pooled_ord = rob['meta_G300'], rob['orders_i0']
 
 # ---------------------------------------------------------------- canvas
 fig, ax0 = ja.figure("wide", "night"); ax0.remove()
@@ -75,10 +75,10 @@ txt(a, 1.1e-6, 0.25, f"pooled {pooled_meta['delta']:.2f} [{pooled_meta['delta_ci
     f" single orders {pooled_ord['delta']:.2f}", "ink", bold=False)
 txt(a, 1.1e-6, 0.062, f"largest taker {r2['delta']:.2f} [{r2['delta_ci'][0]:.2f}, {r2['delta_ci'][1]:.2f}]", "muted")
 txt(a, 1.8e-2, 0.0015, f"all others {r1['delta']:.2f} [{r1['delta_ci'][0]:.2f}, {r1['delta_ci'][1]:.2f}]", "actual", ha="right")
-txt(a, 1.8e-2, 0.00085, f"lines: square-root law, Y {r2['Y']:.2f} / {r1['Y']:.2f}", "faint", ha="right", bold=False)
-ja.panel_title(a, "concave: fitted exponents" if pooled_meta["delta_ci"][1] < 1 else "fitted exponents", size=LB)
+txt(a, 1.8e-2, 0.00085, f"lines: sqrt, prefactor Y {r2['Y']:.2f} / {r1['Y']:.2f}", "faint", ha="right", bold=False)
+ja.panel_title(a, "concave: fitted exponents [95% CI]" if pooled_meta["delta_ci"][1] < 1 else "fitted exponents [95% CI]", size=LB)
 a.set_xlabel("metaorder size / day's volume (Q/V), log", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
-a.set_ylabel("peak impact / daily vol, log", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
+a.set_ylabel("impact / daily vol, log", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
 
 # right: observed vs displayed-book walk
 k = (cmp.Q <= 1.01e6) & (cmp.Q >= 1e3)
@@ -97,17 +97,20 @@ i10 = int(np.argmin(np.abs(c.Q - 1e4)))
 ratio = c.obs_meta_i0 / c.book_mean                            # observed metaorder impact / displayed-book walk
 r_small = ratio[c.Q <= 1.01e4].median(); r_mid = ratio[(c.Q >= 4.6e4) & (c.Q <= 3.2e5)].median()
 r_lo = ratio[c.Q >= 1e4].min()
+r_min, r_max = ratio.min(), ratio.max()                       # the full range over $1k to $1M, as stated on the page
+s_min, s_max = ratio[c.Q <= 1.01e4].min(), ratio[c.Q <= 1.01e4].max()
 WIN.expect("impact vs book: under $10k, $50k-$300k, lowest", [round(r_small), int(r_mid), round(r_lo)], [6, 3, 2])
 fx = (lambda v: f"{v:.0f}") if WIN.IS_ATLAS else (lambda v: f"{v:.1f}")
-ja.label_at(b, c.Q[i10], c.obs_meta_i0[i10], rf"about {round(r_small)}x under \$10k", "actual", dy=48, ha="center", size=LB)  # LED removed on request
+small_txt = f"{round(r_small)}x" if WIN.IS_ATLAS else f"{round(s_min)} to {round(s_max)}x"
+ja.label_at(b, c.Q[i10], c.obs_meta_i0[i10], rf"about {small_txt} under \$10k", "actual", dy=48, ha="center", size=LB)
 txt(b, 1e5, 0.045, rf"about {int(r_mid) if WIN.IS_ATLAS else fx(r_mid)}x at \$50k to \$300k", "ink", ha="center", bold=False)
-txt(b, 1e5, 0.024, r"book biased low above ~\$500k", "faint", ha="center", bold=False)
+txt(b, 1e5, 0.024, r"book runs out above ~\$450k", "faint", ha="center", bold=False)
 ja.panel_title(b, "vs the book", size=LB)
-b.set_xlabel("signed taker notional, log", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
+b.set_xlabel("taker notional, $, log", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
 b.set_ylabel("mid move with the trade, bps, log", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
 
-rng_txt = f"{round(r_lo)} to {round(r_small)}x"
+rng_txt = f"{round(r_min)} to {round(r_max)}x"
 ja.finish(fig, f"Metaorders move price {rng_txt} more than the book", hl=rng_txt,
           subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, {int(c.n_meta.sum()):,} metaorders (gaps < 5 min)",
-          source="Data: Hydromancer Reservoir / node data. Impact = mid 0.25 s after last fill vs before first fill.")
+          source="Data: Hydromancer Reservoir / node data. Impact: mid 0.25 s after last fill vs before first. Squares: binned means.")
 ja.save(fig, "out/impact.png")

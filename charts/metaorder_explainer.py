@@ -62,7 +62,7 @@ a.annotate("child order: one taker order\n(it can fill against several makers)",
            arrowprops=dict(arrowstyle="-", color=C["faint"], lw=1))
 T(a, 14.6, 30, "buys", "model", 10.5, ha="left", bold=True); T(a, 24.4, -40, "sells", "accent", 10.5, ha="left", bold=True)
 ja.panel_title(a, "1  one account's taker orders: same side, gaps of 5 min or less = one metaorder", size=LB)
-a.set_ylabel("order size", **AXL)
+a.set_ylabel("order size, $", **AXL)
 
 # ---------------- 2. impact of MO 4
 b = ja._px_axes(fig, 96, 770, 600, 400)
@@ -108,12 +108,12 @@ T(c, 162, book + 0.05, f"one sweep of ${Q4}k:\n+{book:.1f} bps", "model", 10.5, 
 T(c, 166, I + 0.05, f"MO 4 actually\nmoved +{I:.1f} bps", "accent", 10.5, ha="right", va="bottom", bold=True, linespacing=1.2)
 c.annotate("", xy=(168, I), xytext=(168, book), arrowprops=dict(arrowstyle="->", color=C["ink"], lw=1.5))
 T(c, 162, (book + I) / 2 + 0.1, f"about {I / book:.0f}x\nthe book", "ink", 11, ha="right", bold=True, linespacing=1.2)
-T(c, 3, 2.55, "blue: depth one sweep would take\ngrey: the rest of the displayed asks", "faint", 9.5, ha="left", va="top", linespacing=1.25)
+T(c, 3, 2.55, "blue: depth one sweep would take\ngray: other displayed asks", "faint", 9.5, ha="left", va="top", linespacing=1.25)
 c.set_xlim(0, 170); c.set_ylim(0, 2.6); c.set_xticks([0, 40, 80, 120]); clean(c)
 c.xaxis.set_major_formatter(FuncFormatter(lambda v, _: f"${v:.0f}k"))
 c.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"+{v:.1f}" if v else "0"))
 ja.panel_title(c, "3  vs the book: one sweep of the same size", size=LB)
-c.set_xlabel("displayed ask size per level", **AXL); c.set_ylabel("price above mid, bps", **AXL)
+c.set_xlabel("displayed ask size per level, $", **AXL); c.set_ylabel("price above mid, bps", **AXL)
 
 # ---------------- 4. fill-path shapes
 d = ja._px_axes(fig, 96, 1330, 600, 520)
@@ -152,13 +152,13 @@ e.set_xlim(5e-7, 2e-2); e.set_ylim(3e-4, 0.3)
 T(e, 7e-7, 0.17, "bigger metaorders move price more,\nbut less than in proportion (concave)", "ink", 10, ha="left", linespacing=1.3)
 T(e, 1.6e-2, 2.6e-3, "fitted slope (exponent delta)", "accent", 10, ha="right", bold=True)
 T(e, 1.6e-2, 1.3e-3, "slope 0.5: square-root law", "faint", 10, ha="right")
-T(e, 1.6e-2, 6.5e-4, "I/sigma = Y x (Q/V)^delta", "muted", 10, ha="right")
+T(e, 1.6e-2, 6.5e-4, "I/sigma = Y x (Q/V)^delta, Y: prefactor", "muted", 10, ha="right")
 e.xaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.0e}".replace("e-0", "e-")))
 e.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g}"))
-ja.panel_title(e, "5  across many metaorders (binned)", size=LB)
+ja.panel_title(e, "5  many metaorders (squares: binned means)", size=LB)
 e.set_xlabel("size / day's volume (Q/V), log", **AXL); e.set_ylabel("impact / daily vol (I/sigma), log", **AXL)
 
 ja.finish(fig, "What is a metaorder?", hl="metaorder",
-          subtitle="How taker orders group, and how their impact is measured. Illustrative numbers, not real data.",
+          subtitle="How taker orders group and how their impact is measured. Made-up numbers.",
           source="Schematic. Definitions as in the report: same account and side, gaps <= 5 min, liquidations excluded.")
 ja.save(fig, "out/metaorder_explainer.png")

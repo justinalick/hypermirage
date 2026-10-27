@@ -76,7 +76,7 @@ for j, (ax, (k, rk, lab, role)) in enumerate(zip(axs, B)):
     ax.set_yticks([-1.5, -1, -0.5, 0, 0.5, 1, 1.5])
     if j == 0:
         ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:+.1f}" if v else "0"))
-        ax.set_ylabel("taker markout per hour, bps", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
+        ax.set_ylabel("taker markout, bps (+ = taker gains)", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
     else:
         ax.tick_params(labelleft=False)
     hrs = f" in {nh} h" if nh < 300 else ""
@@ -84,7 +84,7 @@ for j, (ax, (k, rk, lab, role)) in enumerate(zip(axs, B)):
     if j == 1:   # shared x: one label under the middle panel
         ax.set_xlabel("time after fill", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
 
-_k = ja.note_at(axs[1], -0.48, -1.22 if WIN.IS_ATLAS else -1.0, "box: middle 50% of hours\ndiamond: pooled mean, 95% CI\narrows: beyond the axis",
+_k = ja.note_at(axs[1], -0.48, -1.22 if WIN.IS_ATLAS else -1.0, "box: middle 50% of hours\nline in box: median\ndiamond: pooled mean, 95% CI\narrows: hours beyond axis",
                "muted", size=10)
 _k.set_ha("left")
 if WIN.IS_ATLAS: _k.set_bbox(None)

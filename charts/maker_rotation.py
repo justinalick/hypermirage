@@ -31,7 +31,8 @@ a.axhspan(0.5, 3.5, color=ja.C["panel"], lw=0, zorder=0)
 step = max(1, len(weeks) // 9)
 a.set_xticks(x[::step], [w[5:] for w in weeks[::step]]); a.set_xlim(-0.5, len(weeks) + 2.5)
 ja.panel_title(a, "weekly rank by maker volume of the groups that ever made the top 3", size=LB)
-a.set_xlabel("ISO week (shade: top 3; label: share of all maker volume)", **AX); a.set_ylabel("rank", **AX)
+a.set_xlabel("ISO week (shade: top 3; thin gray: other groups that made the top 3;\n"
+             "end label: share of all maker volume)", **AX); a.set_ylabel("rank (1 = largest; 12+ = below 12)", **AX)
 
 ja.line(b, x, G["weekly_top3_share"], "model", lw=2.5, marker="o", ms=4)
 ja.line(b, x, A["weekly_top3_share"], "actual", lw=2.5, marker="o", ms=4)
@@ -39,7 +40,7 @@ b.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.0%}"))
 b.set_xticks(x[::step * 2], [w[5:] for w in weeks[::step * 2]]); b.set_ylim(0, max(G["weekly_top3_share"]) + 0.12)
 ja.label_at(b, 0, max(G["weekly_top3_share"]) + 0.07, "groups (sub-accounts merged)", "model", dy=0, ha="left", size=10).set_bbox(None)
 ja.label_at(b, 0, max(G["weekly_top3_share"]) + 0.02, "single addresses", "actual", dy=0, ha="left", size=10).set_bbox(None)
-ja.panel_title(b, "weekly top-3 share of maker volume", size=LB)
+ja.panel_title(b, "top-3 share of maker volume, %", size=LB); b.set_xlabel("ISO week", **AX)
 rho = float(np.median(G["rank_rho_week_to_week"]))
 r1 = G["weekly_rank"]["G1"]; k = len(r1)
 while k > 0 and r1[k - 1] == 1: k -= 1                 # start of G1's closing run at rank 1

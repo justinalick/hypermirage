@@ -507,7 +507,8 @@ def finish(fig, title, subtitle="", source="", hl=None, hl_role="accent", ax=Non
             ssize -= 0.25
         fig.text(X / W, 1 - (Y + 34) / H, subtitle, fontsize=ssize, family=SANS, color=C["muted"],
                  va="baseline")
-    vape(fig, X, Y + 52, length=width(title, size))          # full title width, LED on the last letter
+    sub_w = swidth(subtitle, ssize) if subtitle else 0
+    vape(fig, X, Y + 52, length=max(width(title, size), sub_w))   # under the wider of title and subtitle, LED at its end
     if source:
         sx, ha = (X, "left") if corner == "top-right" else (W - X, "right")
         fig.text(sx / W, (U + 4) / H, source, fontsize=10, family=MONO, color=C["muted"],

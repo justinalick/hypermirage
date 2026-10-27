@@ -44,15 +44,16 @@ rth, off = 100 * h["10"]["cont_ofi_r2_rth"], 100 * h["10"]["cont_ofi_r2_off"]
 a.plot([2, 2], [off, rth], color=ja.C["model"], lw=1.2, ls=(0, (2, 2)), zorder=3)
 a.plot([2, 2], [off, rth], ls="none", marker="D", ms=7, mfc=ja.C["ground"], mec=ja.C["model"], mew=1.8, zorder=5)
 AT = WIN.IS_ATLAS                                   # the atlas keeps its hand-placed label heights
-txt(a, 1.86 if AT else 2.14, rth, f"10s cash {rth:.0f}%", "model", ha="right" if AT else "left")
-txt(a, 2.16 if AT else 2, 16.2 if AT else off - 4.5, f"10s other {off:.0f}%", "model", ha="left" if AT else "center")
+txt(a, 1.86 if AT else 2.14, rth, f"10s US cash {rth:.0f}%", "model", ha="right" if AT else "left")
+txt(a, 2.16 if AT else 2, 16.2 if AT else off - 4.5, f"10s off-hours {off:.0f}%", "model", ha="left" if AT else "center")
 a.set_ylim(*ja.fit(0, 75, hi + pooled + [rth], 3)); a.set_yticks([0, 20, 40, 60]); a.yaxis.set_major_formatter(pct)
-txt(a, 4.14, med[-1], f"OFI, 30-min refit\n{med[0]:.0f}% to {med[-1]:.0f}%", "actual", linespacing=1.3)
+txt(a, 4.14, med[-1], f"OFI, refit\nevery 30 min\n{med[0]:.0f}% to {med[-1]:.0f}%", "actual", linespacing=1.3)
 txt(a, 5, 11.6 if AT else max(pooled[3:]) + 4.5, "OFI / depth, pooled", "model", ha="right")
 txt(a, 5, 2.6 if AT else ti[-1] - 6, "taker volume alone", "muted", ha="right")
-ja.panel_title(a, "same bin: mid return on OFI  (shade = IQR)", size=LB)
+ja.panel_title(a, "same bin: mid return on order flow imbalance (OFI)", size=LB)
 AX = dict(color=ja.C["muted"], family=ja.MONO, fontsize=LB)
-a.set_xlabel("bin length", **AX); a.set_ylabel("R², same bin, %", **AX)
+a.set_xlabel("bin length", **AX); a.set_ylabel("R-squared (share of move explained), %", **AX)
+txt(a, -0.2, 68, "shade: middle 50%\nof days, OFI refit", "faint", bold=False, linespacing=1.3)
 
 # right: next bin, out of sample
 ja.zero(b)
@@ -75,10 +76,10 @@ txt(b, -0.25, TOP - 0.68, "lagged mid return only", "model")
 txt(b, 5.25, TOP - 0.68, "dots: test days", "faint", ha="right")
 ja.note_at(b, 2.5, -2.55, f"1s with a 1s delay: {100 * g['1s_gap1000ms']:.1f}%", role="muted", size=LB)
 ja.panel_title(b, "next bin: out of sample, vs a zero forecast", size=LB)
-b.set_xlabel("bin length", **AX); b.set_ylabel("out-of-sample R², %", **AX)
+b.set_xlabel("bin length", **AX); b.set_ylabel("out-of-sample R-squared, %", **AX)
 
 WIN.expect("OFI out-of-sample R2 at 1s, %", round(oos[0], 1), 1.3)
 ja.finish(fig, f"Order flow explains moves but forecasts only {oos[0]:.1f}% at 1s", hl=f"{oos[0]:.1f}%",
           subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, {h['1']['n_bins']:,} one-second bins",
-          source="Data: Hydromancer Reservoir / node data. Gross of spread/fees. OOS walk-forward by day. " + ("Dots clip at -3%." if AT else "Dots clip at -3% and +3.2%."))
+          source="Data: Hydromancer Reservoir / node data. Gross of spread/fees. Walk-forward by day. " + ("Dots clip at -3%." if AT else "Dots clip at -3% and +3.2%."))
 ja.save(fig, "out/ofi.png")

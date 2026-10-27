@@ -20,7 +20,7 @@ K = ["pure cancel", "refresh (same px, same size)", "price only, toward touch", 
      "price and size", "size only"]
 KL = ["pure cancel", "identical re-place", "price only, toward touch", "price only, away", "price and size", "size only"]
 kp = kp[K]; kp = kp.div(kp.sum(1), axis=0)
-t = pd.read_parquet(f"{D}/amend_ticks.parquet"); t = t[t.kind == "price only"]
+t = pd.read_parquet(f"{D}/amend_ticks.parquet"); t = t[(t.kind == "price only") & (t.ticks >= 1)]   # 8 sub-tick steps (Aug) round to 0
 
 fig, ax0 = ja.figure("wide", "night"); ax0.remove()
 # neighbours step in lightness; skin (away) sits next to the lighter highlight, brow only at the far end
@@ -39,12 +39,12 @@ for tx, c in zip(lg.get_texts(), KC): tx.set_color(c)
 i1 = DIST.index("3 within 1 bp"); pc = kp.loc[DIST[i1], "pure cancel"]
 ja.signal(ax, pc, i1, ms=0)
 # label above the bar, in the gap between rows, no box
-lt = ax.text(pc, i1 - 0.5, f"{100*(1-pc):.0f}% replaced", ha="center", va="center", color=ja.C["ink"],
+lt = ax.text(pc, i1 - 0.5, f"within 1 bp: {100*(1-pc):.0f}% replaced", ha="center", va="center", color=ja.C["ink"],
              fontsize=11, family=ja.MONO, weight="semibold", zorder=20)
 lt._ja_label = True
 ja.panel_title(ax, "what replaced each cancel in its block", size=11)
 ax.set_xlabel("share of cancels at that distance, %", color=ja.C["muted"], family=ja.MONO, fontsize=11, labelpad=6)
-ax.set_ylabel("distance from touch", color=ja.C["muted"], family=ja.MONO, fontsize=11, labelpad=10)
+ax.set_ylabel("distance from touch at placement", color=ja.C["muted"], family=ja.MONO, fontsize=11, labelpad=10)
 
 bx = ja._px_axes(fig, 1032, 264, 432, 360)
 ser = {}
@@ -57,7 +57,7 @@ ja.label_at(bx, 3.2, 33, "away from touch", "actual", dy=0, ha="left", size=11)
 ja.label_at(bx, 3.2, 25, "toward touch", "model", dy=0, ha="left", size=11)
 ja.note_at(bx, 16.5, 22, f"1 to 3 ticks:\n{ser['toward touch'].loc[1:3].sum():.0f}% toward,\n{ser['away from touch'].loc[1:3].sum():.0f}% away", size=10.5, role="muted")
 ja.panel_title(bx, "size of price-only amends", size=11)
-bx.set_xlabel("ticks moved (0.1 = ~0.13 bp)", color=ja.C["muted"], family=ja.MONO, fontsize=11, labelpad=6)
+bx.set_xlabel("ticks moved (1 tick = 0.1 pt, ~0.13 bp)", color=ja.C["muted"], family=ja.MONO, fontsize=11, labelpad=6)
 bx.set_ylabel("share of amends, %", color=ja.C["muted"], family=ja.MONO, fontsize=11, labelpad=6)
 
 rep = 1 - mix[K[0]]                                   # replaced in the same block

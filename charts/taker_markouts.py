@@ -66,7 +66,6 @@ ja.signal(a, 3, t1["60"][0], label=f"{t1['60'][0]:+.2f} bps", dx=12, dy=-5, size
 ylo_a, yhi_a = a.get_ylim()
 ja.label_at(a, -0.1, yhi_a - 0.1, f"largest taker T1, {100 * m['T1_share']:.0f}% of notional", "actual", dy=0, ha="left", size=LB)
 ja.label_at(a, 1.6 if WIN.IS_ATLAS else 0.15, -0.36 if WIN.IS_ATLAS else (t1["0"][0] + ot["1"][0]) / 2, "all other takers", "model", dy=0, ha="left", size=LB)
-ja.note_at(a, 2.0, ylo_a + 0.07, f"taker fees: T1 ~{FEE[True]:.2f}, others ~{FEE[False]:.2f}", role="muted", size=LB)
 ja.panel_title(a, "T1 vs the rest (maker markout = minus)", size=LB)
 a.set_xlabel("time after fill", **AX); a.set_ylabel("taker markout, bps", **AX)
 
@@ -78,7 +77,7 @@ for h, role, off in (("10", "muted", -0.17), ("60", "actual", 0.17)):
         d = cl[k][h]
         b.plot([i + off] * 2, [d[1], d[2]], color=ja.C[role], lw=1.4, zorder=2)
         b.plot(i + off, d[0], "o", color=ja.C[role], ms=6, mec=ja.C["ground"], mew=1, zorder=3)
-b.set_xticks(range(len(ks)), [k.replace(" (rest)", "") + f"\n{cl[k]['notional'] / 1e6:,.0f}M" for k in ks], fontsize=9)
+b.set_xticks(range(len(ks)), [k.replace(" (rest)", "") + f"\n{100 * cl[k]['notional'] / m['notional']:.0f}%" for k in ks], fontsize=9)
 _w = [cl[k][h][i] for k in ks for h in ("10", "60") for i in (1, 2)]
 ytop_b = ja.fit(-0.9, 3.2, _w, 0.2)[1]
 b.grid(False, axis="x"); b.set_xlim(-0.6, len(ks) - 0.4); b.set_ylim(*ja.fit(-0.9, 3.2, _w, 0.2))
@@ -92,7 +91,7 @@ key_row(b, [("60s after fill", "actual"), ("10s after fill", "muted")])
 if max(cl[k]["60"][0] for k in hi2) > LEAD60:
     ja.note_at(b, 2.6, ytop_b - 0.4, "per dollar, some smaller takers lead the price more", role="muted", size=LB)
 ja.panel_title(b, "markout by taker cluster, 95% CI", size=LB)
-b.set_xlabel("taker cluster, taker notional $", **AX); b.set_ylabel("taker markout, bps", **AX)
+b.set_xlabel("taker cluster, share of taker notional", **AX); b.set_ylabel("taker markout, bps", **AX)
 
 # panel 3: T1 share by UTC hour, Mon to Fri
 t1h, oth = r["T1_by_utc_hour_weekday"], r["oth_by_utc_hour_weekday"]

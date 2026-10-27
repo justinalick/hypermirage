@@ -32,7 +32,7 @@ for y_, (key, ax) in enumerate(P.items()):
     ax.tick_params(axis="y", left=False)
     ax.set_yticks([])
     ja.panel_title(ax, {"shortfall": "fill price vs the mid before, bps", "impact": "mid after the last fill vs before, bps"}[key], size=LB)
-    ax.set_xlabel("spread out minus the other shape  (- = spread out cheaper)", **AX) if key == "shortfall" else ax.set_xlabel("same, for impact", **AX)
+    ax.set_xlabel("spread out minus other, bps (- = cheaper)", **AX) if key == "shortfall" else ax.set_xlabel("spread out minus other, bps (- = less impact)", **AX)
 a = P["shortfall"]
 for yy, h in ((3.75, "vs front-loaded"), (1.55, "vs back-loaded")):
     a.text(-lim - 0.04 * lim, yy, h, ha="right", va="center", family=ja.MONO, fontsize=11, weight="semibold", color=ja.C["ink"])
@@ -43,5 +43,5 @@ n = R["n"]
 ja.finish(fig, "Spreading an order out looks cheaper, mostly because of who does it",
           hl="who does it",
           subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, {sum(n.values()):,} metaorders with 4+ child orders",
-          source="Data: Hydromancer Reservoir / node data. Largest taker left out. 95% CI: day bootstrap.")
+          source="Data: Hydromancer Reservoir / node data. Largest taker left out. Lines: 95% CI, day bootstrap.")
 ja.save(fig, "out/shape_cost.png")

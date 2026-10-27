@@ -1,5 +1,6 @@
 """archetypes_v2 in the @justinalick kit (night). Data loading copied from
 analysis/archetypes/plot2.py (no new fits)."""
+import textwrap
 import sys, json, warnings; warnings.filterwarnings("ignore")
 sys.path.insert(0, "charts")
 import numpy as np, pandas as pd, matplotlib, matplotlib.patches, matplotlib.patheffects as pe; matplotlib.use("Agg")
@@ -104,7 +105,8 @@ for c in range(lp.max() + 1):
         if va == "bottom":   # the island right above the blob: label to its left, so the band above stays free
             x, y = np.percentile(E2[m, 0], 1) - 0.02 * SPAN[0], np.median(E2[m, 1]); ha, va = "right", "center"
     LBL[c] = b.text(x, y, t, fontsize=9.5, color=col, ha=ha, va=va, family=ja.MONO, linespacing=1.3, zorder=5,
-                    weight="regular" if c == big else "semibold")
+                    weight="regular" if c == big else "semibold",
+                    bbox=dict(boxstyle="square,pad=0.2", fc=C["ground"], ec="none", alpha=0.85))
 ja.panel_title(b, f"same pipeline, shuffled data: still {lp.max()+1} clusters", size=LB)
 fig.text(792 / W, 1 - 720 / H, "Each feature shuffled on its own, so no account is real.\n"
          "Accounts that drew a rare nonzero value still split\n"
@@ -118,17 +120,18 @@ c_ = ja._px_axes(fig, 640 if MANY else 600, RT, 368 if MANY else 408, RB - RT)
 c_.barh(yy, jac[order], color=[COL[GRP[k]] for k in order], height=0.66, zorder=2)
 for y, k in zip(yy, order):
     m = lab == k
-    hi = k == order[1]
+    hi = WIN.IS_ATLAS and k == order[1]
     c_.text(jac[k] + (0.06 if hi else 0.02), y, f"{jac[k]:.2f}  n={int(m.sum())}  {share(m):.0f}%", va="center",
             fontsize=8.5, color=C['actual'] if hi else C['muted'], family=ja.MONO, weight="semibold" if hi else "regular",
             bbox=dict(boxstyle="square,pad=0.15", fc=C['ground'], ec="none"), zorder=4)
-c_.set_yticks(yy, [f"{k+1:>2} {short(NAME[k])}"[:44 if MANY else None] for k in order], fontsize=8.5)
+c_.set_yticks(yy, [textwrap.shorten(f"{k+1:>2} {short(NAME[k])}", 44, placeholder="…") if MANY else f"{k+1:>2} {short(NAME[k])}"
+                   for k in order], fontsize=8.5)
 for tl, k in zip(c_.get_yticklabels(), order):
     tl.set_color(COL[GRP[k]] if GRP[k] == 'maker' else C['muted'])
 c_.set_ylim(n + 0.4, -0.5); c_.set_xlim(0, 1.8 if MANY else 1.4)
 c_.set_xticks([0, 0.25, 0.5, 0.75, 1.0], ["0", ".25", ".5", ".75", "1"])
 c_.grid(False)
-for x, t, ha, dx in ((0.75, "stable", "left", 0.015), (0.5, "dissolves", "right", -0.015)):
+for x, t, ha, dx in ((0.7, "stable", "left", 0.015), (0.5, "dissolves", "right", -0.015)):
     c_.axvline(x, color=C['faint'], lw=1, ls=(0, (2, 3)), zorder=1)
     c_.text(x + dx, n + 0.3, t, fontsize=8.5, color=C['faint'], family=ja.MONO, va="bottom", ha=ha)
 k2 = order[1]; m2 = lab == k2
@@ -136,12 +139,14 @@ k2 = order[1]; m2 = lab == k2
 # ja.signal(c_, jac[k2], 1, ms=10)
 c_.annotate(f"{int((jac >= 0.7).sum())} of {n} clusters come close to stable", (0, 1), xycoords="axes fraction",
             xytext=(-276, 5), textcoords="offset points", fontsize=LB, family=ja.MONO, color=C['ink'], va="bottom")
-c_.set_xlabel("mean Jaccard vs best match, 30 refits", **AX); c_.set_ylabel("" if MANY else "cluster", **AX)
+c_.annotate("n = accounts, % = share of notional", (1, 1), xycoords="axes fraction", xytext=(0, 5),
+            textcoords="offset points", fontsize=8.5, family=ja.MONO, color=C['muted'], va="bottom", ha="right")
+c_.set_xlabel("overlap with best match\nin 30 refits (Jaccard, 0-1)", **AX); c_.set_ylabel("" if MANY else "cluster", **AX)
 
 # ---- D: feature profile heatmap, same rows as C
 FN = {'log_notional': 'Total notional', 'maker_share': 'Maker share', 'log_med_order': 'Order size', 'log_cancel_to_fill': 'Cancel-to-fill',
  'log_rest_s': 'Rest time', 'log_dist_bps': 'Dist. from touch', 'has_resting': 'Has resting orders', 'alo_share': 'Post-only share',
- 'frontend_share': 'Front-end mkt share', 'trigger_share': 'Stop / TP share', 'builder_share': 'Builder-routed', 'twap_share': 'TWAP share',
+ 'frontend_share': 'Front-end mkt share', 'trigger_share': 'Stop / take-profit', 'builder_share': 'Builder-routed', 'twap_share': 'TWAP share',
  'cash_share': 'US cash hours', 'weekend_share': 'Weekend share', 'hour_entropy': 'Spread over hours', 'days_active': 'Days active',
  'markout60': '60 s markout', 'log_turnover': 'Turnover', 'net_flow_ratio': 'One-way net flow'}
 M = pd.DataFrame(Z, columns=X.columns).groupby(lab).median().loc[order]
@@ -154,16 +159,16 @@ im = h.pcolormesh(np.arange(M.shape[1] + 1) - 0.5, np.arange(n + 1) - 0.5, M.val
 h.set_xlim(-0.5, M.shape[1] - 0.5); h.set_ylim(n - 0.5, -0.5)
 h.set_xticks(range(M.shape[1]), [FN[c] for c in M.columns], rotation=90, fontsize=8.5)
 h.set_yticks([]); h.grid(False)
-h.set_xlabel("feature", **AX); h.set_ylabel("cluster, same rows as C", **AX, labelpad=6)
+h.set_xlabel("feature", **AX); h.set_ylabel("cluster, same rows as the bars", **AX, labelpad=6)
 for s in h.spines.values(): s.set_visible(False)
-h.annotate("what defines each row, median z", (0, 1), xycoords="axes fraction", xytext=(0, 5),
+h.annotate("what defines each row:\nmedian z-score vs all accounts", (0, 1), xycoords="axes fraction", xytext=(0, 5),
            textcoords="offset points", fontsize=LB, family=ja.MONO, color=C['ink'], va="bottom")
 cax = ja._px_axes(fig, 1444, RT, 12, RP * n)
 cb = fig.colorbar(im, cax=cax, ticks=[-3, 0, 3]); cb.outline.set_visible(False)
 cb.ax.set_yticklabels(["-3", "0", "+3"]); cb.ax.tick_params(labelsize=9, colors=C['muted']); cb.ax.grid(False)
 
 fig.text(48 / W, 1 - ((RB + 150) if MANY else (H - 76)) / H,
-         f"Robustness: HDBSCAN on the raw features finds no clusters in {ra['boot_nclusters'].get('0', 0)} of 200 resamples;" + ("\n" if MANY else " ") +
+         f"Robustness: raw-feature HDBSCAN finds clusters in {200 - ra['boot_nclusters'].get('0', 0)} of 200 resamples;" + ("\n" if MANY else " ") +
          f"UMAP then HDBSCAN bootstrap ARI median {rb['boot_ari'][2]:.2f}.",
          color=C['muted'], family=ja.MONO, fontsize=9.5, va="baseline")
 

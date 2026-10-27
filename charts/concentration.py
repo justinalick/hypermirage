@@ -31,21 +31,22 @@ if len(days) > 21:      # long windows: a daily series instead of one labeled ba
     ax.bar(t, r1, color=ja.C["actual"], **kw)
     ax.bar(t, r23, bottom=r1, color=ja.C["faint"], **kw)
     ax.bar(t, r410, bottom=top3, color=ja.C["tint_model"], **kw)
-    ax.axhline(P, color=ja.C["ink"], lw=1.2, ls=(0, (4, 3)), zorder=1.9)
+    ax.axhline(P, color=ja.C["ink"], lw=1.2, ls=(0, (4, 3)), zorder=3)
     ax.plot(t, g3, color=ja.C["model"], lw=1.6, zorder=4, drawstyle="steps-mid")
     ax.set_ylim(0, 100); ax.set_xlim(t[0] - pd.Timedelta(days=1), t[-1] + pd.Timedelta(days=1))
     ax.set_yticks(range(0, 101, 25)); ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.0f}%"))
     ax.xaxis.set_major_locator(md.MonthLocator()); ax.xaxis.set_major_formatter(md.DateFormatter("%b"))
     x0 = t[0]
     ja.label_at(ax, x0, 95, "#1 account", "actual", dy=0, ha="left", size=LB)
-    ja.label_at(ax, x0 + pd.Timedelta(days=0.11 * len(t)), 95, "#2 and #3", "faint", dy=0, ha="left", size=LB)
-    ja.label_at(ax, x0 + pd.Timedelta(days=0.24 * len(t)), 95, "#4 to #10", "muted", dy=0, ha="left", size=LB)
+    ja.label_at(ax, x0 + pd.Timedelta(days=0.12 * len(t)), 95, "#2 and #3", "faint", dy=0, ha="left", size=LB)
+    k4 = ja.label_at(ax, x0 + pd.Timedelta(days=0.24 * len(t)), 95, "#4 to #10", "ink", dy=0, ha="left", size=LB)
     ja.label_at(ax, x0, 87.5, f"dashed: top 3, {len(t)} days pooled, {P:.1f}%", "ink", dy=0, ha="left", size=LB)
     ja.label_at(ax, x0, 80.0, f"blue line: top 3, declared sub-accounts merged ({PG:.1f}% pooled)",
                 "model", dy=0, ha="left", size=LB)
     for tx in ax.texts:
         if getattr(tx, "_ja_label", False):
             tx.set_bbox(None)
+    k4.set_bbox(dict(boxstyle="square,pad=0.25", fc=ja.C["tint_model"], ec="none"))   # key on a swatch of its band
     ja.panel_title(ax, "maker volume by account rank, per day", size=LB)
     ax.set_xlabel("day (UTC)", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
     ax.set_ylabel("share of daily maker volume, %", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
@@ -66,7 +67,7 @@ w, kw = 0.68, dict(edgecolor=ja.C["ground"], linewidth=1.5, zorder=2)
 ax.bar(x, r1, w, color=ja.C["actual"], **kw)
 ax.bar(x, r23, w, bottom=r1, color=ja.C["faint"], **kw)
 ax.bar(x, r410, w, bottom=top3, color=ja.C["tint_model"], **kw)
-ax.axhline(P, color=ja.C["ink"], lw=1.2, ls=(0, (4, 3)), zorder=1.9)   # behind bars, so labels stay clean
+ax.axhline(P, color=ja.C["ink"], lw=1.2, ls=(0, (4, 3)), zorder=3)     # over the bars: the pooled share sits below most days
 for i in x:   # merged sub-accounts: short bar per day
     ax.plot([i - w / 2, i + w / 2], [g3[i], g3[i]], color=ja.C["model"], lw=3.5, zorder=4, solid_capstyle="butt")
 
@@ -85,7 +86,7 @@ ja.label_at(ax, hi, top3[hi], f"{top3[hi]:.0f}%", "actual", dy=10, size=11)
 # key, top-left inside the panel
 ja.label_at(ax, -0.45, 95, "#1 account", "actual", dy=0, ha="left", size=LB)
 ja.label_at(ax, 1.55, 95, "#2 and #3", "faint", dy=0, ha="left", size=LB)
-ja.label_at(ax, 3.4, 95, "#4 to #10", "muted", dy=0, ha="left", size=LB)
+k4 = ja.label_at(ax, 3.4, 95, "#4 to #10", "ink", dy=0, ha="left", size=LB)
 ja.label_at(ax, -0.45, 87.5, f"dashed: top 3, {len(days)} days pooled, {P:.1f}%", "ink", dy=0, ha="left", size=LB)
 ja.label_at(ax, 5.0, 87.5, f"blue tick: top 3, declared sub-accounts merged ({PG:.1f}%)", "model", dy=0, ha="left", size=LB)
 
@@ -99,6 +100,7 @@ ax.set_xticks(x, lab, fontsize=10, linespacing=1.3)
 for t in ax.texts:   # no label boxes over bars
     if getattr(t, "_ja_label", False):
         t.set_bbox(None)
+k4.set_bbox(dict(boxstyle="square,pad=0.25", fc=ja.C["tint_model"], ec="none"))   # key on a swatch of its band
 ja.panel_title(ax, "maker volume by account rank, per day", size=LB)
 ax.set_xlabel("day (UTC), with daily volume", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
 ax.set_ylabel("share of daily maker volume, %", color=ja.C["muted"], family=ja.MONO, fontsize=LB)

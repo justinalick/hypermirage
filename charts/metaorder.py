@@ -51,7 +51,7 @@ else:                                                    # two lines, so it fits
 for nm, (x_, y_) in pos.items():
     sep = "\n" if nm == 'spread out' and not ATL else " "
     t = ja.label_at(a, x_, y_, f"{nm}{sep}{n_by[nm]:,}", ROLE[nm], dy=0, ha="left", size=LB); t.set_bbox(None); t.set_va("center")
-ja.panel_title(a, "fill path, median  (IQR: shade, dotted)", size=LB)
+ja.panel_title(a, "median path; middle 50% shade/dotted; dashed: even pace", size=LB)
 a.set_xlabel("elapsed share of duration, %", **AX); a.set_ylabel("share of metaorder filled, %", **AX)
 
 # right: impact coefficient by group
@@ -74,14 +74,14 @@ ja.label_at(b, 1.6, 3.8, "hollow: largest taker", "muted", dy=-4, ha="center", s
 shp = [R['ex_top'][g]['Y_i0'] for g in ('front-loaded', 'spread out', 'back-loaded')]
 overlap = max(r['lo'] for r in shp) < min(r['hi'] for r in shp)
 ja.label_at(b, 1.6, 3.35, "shape CIs overlap" if overlap else "shape CIs do not all overlap", "muted", dy=-4, ha="center", size=LB)
-ja.panel_title(b, "Y by group, 95% CI, hour-block bootstrap", size=LB)
-b.set_xlabel("impact Y, I/sigma = Y sqrt(Q/V)", **AX); b.set_ylabel("metaorder group", **AX)
+ja.panel_title(b, "prefactor Y, 95% CI (hour-block bootstrap)", size=LB)
+b.set_xlabel("prefactor Y (higher = more impact per size)", **AX); b.set_ylabel("metaorder group", **AX)
 
 ab, aw = S['ari_boot']['3'][1], S['ari_week']['3']
 ylo, yhi = min(r['Y'] for r in shp), max(r['Y'] for r in shp)
 # atlas published 0.68 to 1.23 with a tie-dependent metaorder order; with the stable order (order_id tie-break) it is 0.65 to 1.20
 WIN.expect("metaorder shape Y range (other accounts)", [round(ylo, 2), round(yhi, 2)], [0.65, 1.20])
-yr = f"Y {ylo:.2f} to {yhi:.2f}"
+yr = f"prefactor Y {ylo:.2f} to {yhi:.2f}"
 ja.finish(fig, f"Execution shape barely moves impact: {yr}" if overlap else f"Execution shape and impact: {yr}", hl=yr,
           subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, {len(L):,} metaorders with 4+ child orders",
           source=f"Data: Hydromancer Reservoir / node data. DTW k-medoids, k=3: bootstrap ARI {ab:.2f}, "

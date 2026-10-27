@@ -44,7 +44,7 @@ def xfmt(ax, lo):
     ax.set_xscale("log"); ax.xaxis.set_major_locator(FixedLocator([1, 2, 5, 10, 20, 40]))
     ax.xaxis.set_minor_locator(NullLocator()); ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g}%"))
     ax.set_xlim(lo, 45)
-    ax.set_xlabel("realized vol, trailing 15 min, annualized", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
+    ax.set_xlabel("trailing 15-min realized vol, annualized, log", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
 
 
 # left: across hours
@@ -56,14 +56,14 @@ b = np.polyfit(np.log(h.rv), np.log(h.d10), 1); xx = np.geomspace(0.8, 45, 50)
 aL.plot(xx, np.exp(np.polyval(b, np.log(xx))) / 1e6, color=ja.C["muted"], lw=1.6, ls=(0, (5, 4)), zorder=4)
 xfmt(aL, 0.6)
 aL.set_yscale("log"); aL.yaxis.set_major_locator(FixedLocator([1, 2, 5, 10, 20, 40])); aL.yaxis.set_minor_locator(NullLocator())
-aL.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"${v:g}M")); aL.set_ylim(0.8, 50)
-ja.label_at(aL, 0.65, 33, f"all hours: rho {rho:+.2f}", "muted", dy=0, ha="left", size=LB)
+aL.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"${v:g}M")); aL.set_ylim(min(0.8, h.d10.min() / 1e6 / 1.2), 50)
+ja.label_at(aL, 0.65, 33, f"dashed: log-log fit, corr. of logs {rho:+.2f}", "muted", dy=0, ha="left", size=LB)
 ja.label_at(aL, 24, 7.2, "US cash hours", "actual", dy=0, ha="center", size=LB)
 ja.label_at(aL, 2.6, 21, "overnight, futures open", "model", dy=0, ha="center", size=LB)
-ja.label_at(aL, 1.0, 1.25, "futures closed (weekend, daily break)" if not WIN.HOLIDAYS
-            else "futures closed (weekend, holiday, daily break)", "faint", dy=0, ha="left", size=LB)
+ja.label_at(aL, 0.65, 1.25, "futures closed (weekend, daily break)" if not WIN.HOLIDAYS
+            else "futures closed: weekend, holiday, break", "faint", dy=0, ha="left", size=LB)
 ja.panel_title(aL, "across hours, hourly medians", size=LB)
-aL.set_ylabel("depth within 10 bps, log scale", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
+aL.set_ylabel("depth within 10 bps, $, log", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
 
 # right: within a day
 aR.axhline(0, color=ja.C["faint"], lw=1, zorder=2)
@@ -85,7 +85,8 @@ ja.signal(aR, c.rv.iloc[-1], p(c.rel.iloc[-1]), ms=0)
 ja.label_at(aR, 42, -9.5 if WIN.IS_ATLAS else 4.5, f"cash: {gap['cash']:+.1f}%", "actual", dy=0, ha="right", size=LB)
 ja.label_at(aR, 14, 9.5, f"overnight: {gap['overnight']:+.1f}%", "model", dy=0, ha="center", size=LB)
 if POOLED_CLOSED:
-    ja.label_at(aR, 1.45, aR.get_ylim()[1] - 5, f"futures closed: {gap['closed']:+.1f}%", "faint", dy=0, ha="left", size=LB)
+    ja.label_at(aR, 1.45, aR.get_ylim()[1] - 5 if WIN.IS_ATLAS else aR.get_ylim()[0] + 3, f"futures closed: {gap['closed']:+.1f}%",
+                "faint", dy=0, ha="left", size=LB)
 else:
     d0, d1 = (f"{pd_.strftime('%b')} {pd_.day} to {(pd_ + dt.timedelta(days=2)).day}"
               for pd_ in (dt.date(int(WIN.START[:4]), int(k[1:3]), int(k[3:5])) for k in wk))
@@ -94,8 +95,8 @@ else:
     g0, g1 = gap[wk[0]], gap[wk[1]]
     if (g0 < 0) != (g1 < 0):
         ja.note_at(aR, 13, 27, "the two weekends disagree:\none dropped, one did not", "ink", size=11)
-ja.panel_title(aR, "within a day", size=LB)
-aR.set_ylabel("depth vs same day and hour, %", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
+ja.panel_title(aR, "within a day, points = volatility deciles", size=LB)
+aR.set_ylabel("depth vs same-hour, same-session median, %", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
 
 keep = "keep their depth" if gap["cash"] > -10 else "lose depth"
 ja.finish(fig, f"Volatile minutes {keep}: {gap['cash']:+.1f}% in cash hours",

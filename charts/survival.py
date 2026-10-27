@@ -57,7 +57,7 @@ ja.signal(ax, 1, sa, ms=0)
 N = {b: f"{cv[b]['n'] / 1e6:.1f}M" for b in "abcd"}
 lab(0.86, 18.5, f"at or inside the touch ({N['a']})\n{c1['a']:.0%} cancelled by 1s", "actual", ha="right", size=11)
 lab(0.86, 5.5, f"up to 1 bp behind ({N['b']})\n{c1['b']:.0%} cancelled by 1s", "model", ha="right", size=11)
-lab(1.2, 100 * (1 - c1["d"]) + 4, f"{c1['d']:.0%} cancelled by 1s", "dim", va="bottom")
+lab(1.2, 100 * (1 - c1["d"]) + 4, f"more than 5 bps: {c1['d']:.0%} cancelled by 1s", "dim", va="bottom")
 along("d", 3, 40, 8, f"more than 5 bps behind ({N['d']})", "dim")
 along("c", 2.2, 20, 8, f"1 to 5 bps behind ({N['c']})", "faint")
 
@@ -67,5 +67,5 @@ ax.set_ylabel("share of orders still resting, %", color=ja.C["muted"], family=ja
 m = D["meta"]
 ja.finish(fig, f"{c1['a']:.0%} of quotes at or inside the touch are cancelled within 1s", hl=f"{c1['a']:.0%}",
           subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, {m['n'] / 1e6:.1f}M orders, {m['accts']:,} accounts",
-          source="Data: Hydromancer Reservoir / node data. Kaplan-Meier; fills and day-end orders censored.")
+          source="Data: Hydromancer Reservoir / node data. Kaplan-Meier; fills and day-end orders censored. Dotted line: 1s.")
 ja.save(fig, "out/survival.png")

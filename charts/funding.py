@@ -102,12 +102,12 @@ def key_row(ax, items, size=LB, gap=3):
         off += (len(text) + gap) * cw
 
 
-key_row(A, [("US cash hours", "model"), ("flat-funding band -2 to +4", "faint")])
+key_row(A, [("US cash hours", "model"), ("flat-funding band, -2 to +4 bps", "faint")])
 ja.note_at(A, 6 * 24 - 8, -5.4, f"ES closed: median {closed.prem_bps.median():+.2f} bps, {len(closed):,} h", size=LB).set_bbox(None)
 t = ja.label_at(A, 18.5, 1.0, "17:00 ET halt", role="muted", dy=0, ha="left", size=LB); t.set_bbox(None); t.set_weight("regular")
 k = 2 * 24 + 4                                    # Wed 04:00 ET, a typical ES-open hour
 ja.signal(A, k, med.loc[k], label=f"{f[f.session != 'es_closed'].prem_bps.median():+.1f} bps median while ES trades", dx=4, dy=-44, size=LB, ms=0, role="actual")  # LED hidden on request; label kept
-ja.panel_title(A, "when: median by hour of week, IQR shaded", size=LB)
+ja.panel_title(A, "when: median by hour of week, middle 50% shaded", size=LB)
 axlab(A, "day of week, New York time", "premium to oracle, bps")
 
 # B: daily median premium
@@ -117,7 +117,7 @@ B.bar(dm.index, dm, width=1, color=np.where(dm < zero_fund, ja.C["actual"], ja.C
 ja.zero(B)
 B.set_ylim(*ja.fit(-12, 4.5, dm, 1)); B.set_yticks([-10, -5, 0]); B.yaxis.set_major_formatter(bps)
 B.xaxis.set_major_locator(md.MonthLocator(bymonth=[4, 6, 8, 10])); B.xaxis.set_major_formatter(md.DateFormatter("%b"))
-t = ja.label_at(B, pd.Timestamp("2026-08-20", tz="UTC"), -11.1, f"below {zero_fund:.0f} bps: shorts paid", "actual", dy=0, size=LB); t.set_bbox(None)
+t = ja.label_at(B, pd.Timestamp("2026-08-01", tz="UTC"), -11.1, f"tan: below {zero_fund:.0f} bps, shorts paid", "actual", dy=0, size=LB); t.set_bbox(None)
 ja.panel_title(B, f"daily median premium  ({(f.prem < 0).mean():.0%} of hours < 0)", size=LB)
 axlab(B, "date, 2026", "median premium, bps")
 
@@ -133,7 +133,7 @@ Cx.set_ylim(*ja.fit(-1.3, 0.15, cf, 0.1)); Cx.set_yticks([-1.2, -0.8, -0.4, 0]);
 Cx.xaxis.set_major_locator(md.MonthLocator(bymonth=[4, 6, 8, 10])); Cx.xaxis.set_major_formatter(md.DateFormatter("%b"))
 ja.end_label(Cx, cf.index, cf.values, f"long received {-cf.iloc[-1]:.2f}%, about {-cf.iloc[-1] / years:.1f}%/yr", "actual", dy=14, size=LB)
 ja.panel_title(Cx, "funding paid by a constant 1x long", size=LB)
-axlab(Cx, "date, 2026", "funding paid, cum. %")
+axlab(Cx, "date, 2026", "cumulative funding paid\nby a long, % (<0 = received)")
 
 # D: next-24h return by premium quintile
 gq = d.groupby("q").agg(p=("prem_bps", "median"), r=("r24", "mean"), se=("r24", lambda s: s.std() / np.sqrt(len(s))))
@@ -144,9 +144,9 @@ Dq.set_xticks(range(5)); Dq.set_xticklabels([f"{p:+.1f}" for p in gq.p]); Dq.gri
 _e = 2 * gq.se * np.sqrt(24)
 Dq.set_ylim(*ja.fit(-28, 62, np.r_[gq.r - _e, gq.r + _e], 4)); Dq.set_yticks([-20, 0, 20, 40]); Dq.yaxis.set_major_formatter(bps)
 ja.label_at(Dq, 0.35, gq.r.iloc[0] + 3, f"{gq.r.iloc[0]:+.0f} bps", "actual", dy=0, ha="left", size=LB)
-ja.note_at(Dq, 2.8, 50, "bars: 2 SE, widened for overlap", role="faint", size=LB)
-ja.panel_title(Dq, "deepest fifth next 24h: up on average...", size=LB)
-axlab(Dq, "premium quintile, median bps", "mean 24h return, bps")
+ja.note_at(Dq, 2.8, 50, "error bars: 2 standard errors,\nwidened for overlap", role="faint", size=LB)
+ja.panel_title(Dq, "most negative fifth next 24h: up on average...", size=LB)
+axlab(Dq, "premium quintile, median bps", "mean next-24h return, bps")
 
 # E: deepest-discount fifth by month vs all hours
 months = sorted(d.month.unique())
@@ -162,7 +162,7 @@ ja.zero(E)
 E.set_xticks(x); E.set_xticklabels([m[3:] for m in months]); E.grid(False, axis="x")
 ehi = ja.fit(-45, 165, np.r_[q0.r, base], 15)[1]
 E.set_ylim(ja.fit(-45, 165, np.r_[q0.r, base], 10)[0], ehi); E.set_yticks([0, 50, 100, 150]); E.yaxis.set_major_formatter(bps)
-for txt_, role_, x_ in (("deepest fifth", "actual", 1.6), ("all hours", "faint", 4.25)):
+for txt_, role_, x_ in (("most negative fifth", "actual", 0.9), ("all hours", "faint", 4.9)):
     t = ja.label_at(E, x_, ehi - 55, txt_, role_, dy=0, ha="left", size=LB); t.set_bbox(None); t.set_va("center")
 ja.note_at(E, 4.3, ehi - 17, f"daily test: corr {corr:.2f}, t {tstat:.2f}, n {len(daily)}", size=LB)
 # months that contribute most of the deepest fifth's summed 24h return (positive months only)
@@ -179,11 +179,11 @@ elif len(lead) <= 2:
 else:
     etitle = f"...in {int((q0.r > base).sum())} of {len(months)} months"
 ja.panel_title(E, etitle, size=LB)
-axlab(E, f"month, 2026; {len(d):,} h from {d.index.min():%b} {d.index.min().day}", "mean 24h return, bps")
+axlab(E, f"month, 2026; {len(d):,} h from {d.index.min():%b} {d.index.min().day}", "mean next-24h return, bps")
 
 span = f"{f.index.min():%b} {f.index.min().day} to {f.index.max():%b} {f.index.max().day}, {f.index.max().year}"
 WIN.expect("funding: median premium while ES trades (bps)", round(open_med, 1), -3.2, tol=0.05)
 ja.finish(fig, f"xyz:SP500 trades about {-open_med:.0f} bps under oracle while ES is open", hl=f"about {-open_med:.0f} bps",
           subtitle=f"xyz:SP500 perp on Hyperliquid, {span}, {len(f):,} funding hours",
-          source=f"Data: Hyperliquid public API (fundingHistory, 1h candles), {span}. No ES prices.")
+          source="Data: Hyperliquid public API (fundingHistory, 1h candles). ES = CME E-mini S&P 500 futures; no ES prices used.")
 ja.save(fig, "out/funding.png")

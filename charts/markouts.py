@@ -49,7 +49,8 @@ for ax in (a, b):
     ax.set_ylim(YLO, YHI); ax.set_yticks([v for v in np.arange(-2.0, 1.01, 0.2).round(1) if YLO < v < YHI])
     ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:+.1f}" if v else "0"))
     ax.set_xlabel("time after fill", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
-    ax.set_ylabel("markout vs fill price, bps", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
+    ax.set_ylabel("markout vs fill, bps (+ = " + ("side gains)" if ax is a else "taker gains)"),
+                  color=ja.C["muted"], family=ja.MONO, fontsize=LB)
 
 def nobox(t):
     t.set_bbox(None)
@@ -75,10 +76,11 @@ ja.signal(a, 0, mt[0], dx=14, dy=-30, size=LB, ms=0, role="actual")
 nobox(ja.label_at(a, 0.25, mt[0], f"{mt[0]:.2f} at fill", "actual", dy=-34, ha="left", size=LB))
 pos = [i for i in range(1, len(H)) if mt[i] > 0]
 late = (mt[H.index("120")] + mt[H.index("300")]) / 2
+late_txt = "0 bps" if abs(late) < 0.005 else f"{late:+.2f} bps"   # no "-0.00"
 if pos and all(mt[i] > 0 for i in range(pos[0], len(H))):
-    ja.note_at(a, 4.6, YHI - 0.1 if WIN.IS_ATLAS else YLO + 0.25 * (YHI - YLO) / 1.55, f"taker turns positive after about {XL[pos[0]]},\nabout {late:+.2f} bps at 2 to 5 min", "ink", size=10.5)
+    ja.note_at(a, 4.6, YHI - 0.1 if WIN.IS_ATLAS else YLO + 0.25 * (YHI - YLO) / 1.55, f"taker turns positive after about {XL[pos[0]]},\nabout {late_txt} at 2 to 5 min", "ink", size=10.5)
 else:
-    ja.note_at(a, 7.8, YLO + 0.3 * (YHI - YLO) / 1.55, f"taker markout {late:+.2f} bps\nat 2 to 5 min", "ink", size=10.5)
+    ja.note_at(a, 7.8, YLO + 0.3 * (YHI - YLO) / 1.55, f"taker markout {late_txt}\nat 2 to 5 min", "ink", size=10.5)
 ja.panel_title(a, "all fills, taker vs maker (95% CI)", size=LB)
 
 # right: taker markout by order size (key band only: under $10k; grey band for $100k and over)
@@ -95,7 +97,7 @@ net = r["< $10k"]["60"][0] - F["taker_lt10k"]
 nobox(ja.note_at(b, 5.75 if WIN.IS_ATLAS else 5.9, YLO + (0.32 if WIN.IS_ATLAS else 0.2), f"gross of fees: avg taker fee {F['taker']:.2f} bps\n"
                  f"incl. builder fees (exchange alone {F['taker_ex_builder']:.2f})\n"
                  f"under $10k pay {F['taker_lt10k']:.2f}: " + (f"about {-net:.0f} bp underwater" if net < 0 and WIN.IS_ATLAS else f"about {-net:.1f} bp underwater" if net < 0 else f"{net:+.1f} bp net at 1m"), "muted", size=10.5))
-ja.panel_title(b, "taker side, by taker order size", size=LB)
+ja.panel_title(b, "taker side, by taker order size (95% CI)", size=LB)
 
 follows = late > 0
 ja.finish(fig, f"Takers pay {-mt[0]:.2f} bps to cross" + (", then the price follows them" if follows else ""), hl=f"{-mt[0]:.2f} bps",

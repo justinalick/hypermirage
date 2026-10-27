@@ -38,7 +38,7 @@ for i, k in enumerate(ys):
     yl[k] = max(ends[k], yl[ys[i - 1]] + sep) if i else ends[k]
 for k in BK:
     t = ja.label_at(a, 3.08, yl[k], f"{k}  {ends[k]:.0%}".replace("$", r"\$"), ROLE[k], dy=0, ha="left", size=10.5); t.set_va("center")
-ja.panel_title(a, "impact kept, as a share of the move at the last fill", size=LB)
+ja.panel_title(a, "impact kept, share of move at last fill; bands: 95% CI", size=LB)
 a.set_xlabel("time after the metaorder's last fill", **AX); a.set_ylabel("share of end impact", **AX)
 
 # right: drift after the end vs what the trend and the move itself predict
@@ -46,8 +46,8 @@ ja.zero(b)
 for i, k in enumerate(BK):
     g = G[k]
     obs = g["i300"][0] - g["i0"][0]; ex = g["ex_i300"]
-    b.bar(i - 0.17, obs, width=0.3, color=ja.C["axis"], zorder=2)
-    b.bar(i + 0.17, g["exp_i300"][0], width=0.3, color=ja.C["tint_model"], zorder=2)
+    b.bar(i - 0.17, obs, width=0.3, color=ja.C["faint"], zorder=2)
+    b.bar(i + 0.17, g["exp_i300"][0], width=0.3, color=ja.C["model"], alpha=0.75, zorder=2)
     b.errorbar(i, ex[0], yerr=[[ex[0] - ex[1]], [ex[2] - ex[0]]], fmt="D", ms=8, color=ja.C[ROLE[k]],
                mec=ja.C["ground"], ecolor=ja.C[ROLE[k]], elinewidth=2, capsize=4, zorder=4)
 lo_ = min(min(G[k]["ex_i300"][1], G[k]["i300"][0] - G[k]["i0"][0]) for k in BK)
@@ -56,10 +56,10 @@ b.set_ylim(lo_ - 0.12, hi_ + 0.5); b.set_xlim(-0.6, 3.6)
 b.set_xticks(range(4), ["$1k-10k", "$10k-100k", "$100k-1M", "$1M+"])
 b.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:+.1f}" if v else "0"))
 ytop = b.get_ylim()[1]
-ja.label_at(b, -0.5, ytop - 0.06, "grey: drift in the 5 min after the end", "muted", dy=0, ha="left", size=9.5).set_bbox(None)
+ja.label_at(b, -0.5, ytop - 0.06, "gray: drift in the 5 min after the end", "muted", dy=0, ha="left", size=9.5).set_bbox(None)
 ja.label_at(b, -0.5, ytop - 0.16, "blue: random moves, same size and trend", "model", dy=0, ha="left", size=9.5).set_bbox(None)
-ja.label_at(b, -0.5, ytop - 0.26, "diamond: the difference, 95% CI", "ink", dy=0, ha="left", size=9.5).set_bbox(None)
-ja.panel_title(b, "5-min drift beyond momentum, bps", size=LB)
+ja.label_at(b, -0.5, ytop - 0.26, "diamond: the difference (color = size), 95% CI", "ink", dy=0, ha="left", size=9.5).set_bbox(None)
+ja.panel_title(b, "5-min drift vs matched control, bps", size=LB)
 b.set_xlabel("metaorder size", **AX); b.set_ylabel("bps, + = the trade's direction", **AX)
 
 big = G["$1M+"]["kept_300"][0]

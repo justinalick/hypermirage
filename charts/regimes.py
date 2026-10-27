@@ -48,7 +48,7 @@ for x in (c_open, c_close, halt, halt + 1):
 for x, t, ha in [(c_open, "cash open", "center"), (c_close - 0.1, "close", "right"), (halt, "ES halt", "left")]:
     ax.text(x, -0.6, t, ha=ha, va="bottom", fontsize=9.5,
             color=C['muted'], family=ja.MONO)
-ja.panel_title(ax, "HMM state by minute", size=LB).set_y(1.05)
+ja.panel_title(ax, "hidden Markov model (HMM) state by minute", size=LB).set_y(1.05)
 ax.set_xlabel("UTC hour", loc="right", labelpad=2, **AX); ax.set_ylabel("day", **AX)
 for i, (c, t) in enumerate(zip(COL, NAME)):
     xc = [192, 508, 728][i]; yc = 772
@@ -56,13 +56,14 @@ for i, (c, t) in enumerate(zip(COL, NAME)):
                                                 fc=c, ec="none"))
     fig.text((xc + 22) / W, 1 - yc / H, t, color=c, family=ja.MONO, fontsize=9.5, va="center",
              weight="semibold" if i == 0 else "regular")
+fig.text(940 / W, 1 - 772 / H, "dark specks: no data", color=C["muted"], family=ja.MONO, fontsize=9.5, va="center")
 
 RT, RH = 840, 296
 # ---- B: medians by state
 ax = ja._px_axes(fig, 264, RT, 312, RH)
 prof = pd.DataFrame(r3["profile"])
-metrics = [("depth10_musd", "depth ±10bps $M"), ("spread_bps", "spread bps"), ("rv5_ann_pct", "5m vol ann. %"),
-           ("abs_imb", "|L1 imbalance|")]
+metrics = [("depth10_musd", "depth within\n10 bps, $M"), ("spread_bps", "spread, bps"), ("rv5_ann_pct", "5-min vol,\nannualized, %"),
+           ("abs_imb", "|top-of-book\nimbalance|")]
 y = np.arange(len(metrics))
 for k in range(3):
     vals = [prof.loc[k, m] / prof[m].max() for m, _ in metrics]
@@ -115,7 +116,7 @@ ax.set_ylim(3.5, -0.5); ax.set_xlim(0, 1); ax.set_xticks([0, 0.5, 1], ["0", "50%
 for sp in ax.spines.values(): sp.set_visible(False)
 wk = r3["session_mix"]["futures closed (wknd)"]["0"]
 ja.signal(ax, wk, 3, label=f"{100 * wk:.1f}% thin", dx=-90, dy=14, size=9.5, ms=0, role="actual")
-ax.set_xlabel("share of minutes, %", loc="right", **AX); ax.set_ylabel("session", **AX)
+ax.set_xlabel("share of minutes, %", loc="right", **AX)
 ax.annotate("state mix by session", (0, 1), xycoords="axes fraction", xytext=(-78, 8),
             textcoords="offset points", fontsize=LB, family=ja.MONO, color=C['ink'], va="bottom")
 
@@ -133,5 +134,5 @@ for yb, t in ((H - 100, f"Thin vs deep (2 states) {holds2} on {part} alone (ARI 
 who = "weekends" if not WIN.HOLIDAYS else "futures-closed hours"
 ja.finish(fig, f"Regimes follow the CME clock: {who} {100 * wk:.1f}% thin", hl=f"{100 * wk:.1f}% thin",
           subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, {r3['n_minutes']:,} minutes, 3-state HMM",
-          source="Data: Hydromancer Reservoir / node data.")
+          source="Data: Hydromancer Reservoir / node data. ES = CME E-mini S&P 500 futures. ARI: adjusted Rand index, 1 = same states.")
 ja.save(fig, "out/regimes.png")

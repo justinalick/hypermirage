@@ -29,7 +29,7 @@ def panel(ax, title, dots, mvals, role="actual", fmt=None, zero=False, dots_wd=T
     ax.plot(M.t[full], y[full], "o", ms=7, color=ja.C[role], zorder=4)
     ax.plot(M.t[~full], y[~full], "o", ms=7, mfc=ja.C["ground"], mec=ja.C[role], mew=2, zorder=4)
     if zero: ja.zero(ax)
-    ax.xaxis.set_major_locator(mdates.MonthLocator()); ax.xaxis.set_major_formatter(mdates.DateFormatter("%b"))
+    ax.set_xticks(list(M.t), [("\n" if i == 0 and len(M) > 1 and (M.t.iloc[1] - t).days < 25 else "") + t.strftime("%b") for i, t in enumerate(M.t)])   # a tick under each monthly point
     ax.set_xlim(pd.Timestamp(WIN.ISO[0]) - pd.Timedelta(days=3), pd.Timestamp(WIN.ISO[-1]) + pd.Timedelta(days=3))
     if fmt: ax.yaxis.set_major_formatter(FuncFormatter(fmt))
     ja.panel_title(ax, title, size=LB)
@@ -41,7 +41,7 @@ panel(P[1], "quoted spread, US cash hours, bps", "spread_cash", "spread_cash_bps
 d["taker_m"] = d.taker_usd
 panel(P[2], "taker volume per US trading day", "taker_usd", "taker_usd_per_weekday", fmt=lambda v, _: f"${v / 1e6:.0f}M")
 P[2].set_ylim(0, None)
-panel(P[3], "top-3 maker share of maker volume", "top3", "top3_median", fmt=lambda v, _: f"{v:.0%}", dots_wd=False)
+panel(P[3], "top-3 maker share of maker volume, %", "top3", "top3_median", fmt=lambda v, _: f"{v:.0%}", dots_wd=False)
 y = M.top3_merged_median.astype(float)
 P[3].plot(M.t, y, color=ja.C["model"], lw=2, ls=(0, (4, 3)), zorder=3)
 ja.label_at(P[3], M.t.iloc[-1], y.iloc[-1], "sub-accounts merged", "model", dy=22, ha="right", size=10)
@@ -54,17 +54,18 @@ for b, role, lab, yl in (("a", "actual", "at or inside the touch", 0.93), ("b", 
     P[4].plot(M.t[~full], y[~full.values], "o", ms=6, mfc=ja.C["ground"], mec=ja.C[role], mew=2, zorder=4)
     t_ = ja.label_at(P[4], M.t.iloc[0], yl, lab, role, dy=0, ha="left", size=9.5); t_.set_bbox(None)
 P[4].yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.0%}")); P[4].set_ylim(0, 1)
-P[4].xaxis.set_major_locator(mdates.MonthLocator()); P[4].xaxis.set_major_formatter(mdates.DateFormatter("%b"))
+P[4].set_xticks(list(M.t), [("\n" if i == 0 and len(M) > 1 and (M.t.iloc[1] - t).days < 25 else "") + t.strftime("%b") for i, t in enumerate(M.t)])
 P[4].set_xlim(P[0].get_xlim())
-ja.panel_title(P[4], "cancelled within 1 s, by distance", size=LB)
+ja.panel_title(P[4], "orders cancelled within 1 s, %", size=LB)
 panel(P[5], "taker markout at 1 min, bps", "mk60", "mk60_bps", role="actual", fmt=lambda v, _: f"{v:+.2f}" if v else "0",
       zero=True, dots_wd=False)
 lo, hi = np.nanpercentile(d.mk60.astype(float), [2, 98]); P[5].set_ylim(lo, hi); P[5].yaxis.set_major_locator(matplotlib.ticker.MultipleLocator(0.25))
+P[5].text(0.02, 0.98, "per order, + = taker gains", transform=P[5].transAxes, ha="left", va="top", color=ja.C["muted"], family=ja.MONO, fontsize=10)
 
 j, ju = M.depth_cash_usd.astype(float), M.index
 peak = ju[int(np.argmax(j))]; low = ju[int(np.argmin(j[full.values] if full.any() else j))]
 g = float(M.depth_cash_usd.loc["2026-07"] / M.depth_cash_usd.loc["2026-05"])
 ja.finish(fig, f"Cash-hours depth grew {g:.1f}x from May to July, then eased", hl=f"{g:.1f}x",
           subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, month by month",
-          source="Data: Hydromancer Reservoir / node data. Dots: days. Hollow: partial months. Merged: sub-account links declared today.")
+          source="Data: Hydromancer Reservoir / node data. Lines: months, dots: days, hollow: partial. Merged: sub-accounts declared today.")
 ja.save(fig, "out/monthly.png")

@@ -17,8 +17,8 @@ p = lambda v: np.expm1(v) * 100
 gap = {(es, k): p(g[k].iloc[-1] - g[k].iloc[0]) for es, g in dec.groupby("es") for k in ("sp", "dep")}
 WIN.expect("vol_spread gaps %: open sp, open dep, closed sp, closed dep",
            [round(gap["open", "sp"], 1), round(gap["open", "dep"], 1), round(gap["closed", "sp"], 1), round(gap["closed", "dep"], 1)],
-           [18.9, -1.2, 56.8, -19.2])
-ROLE = {"open": "actual", "closed": "model"}
+           [18.9, -1.2, 56.8, -19.1])
+ROLE = {"open": "actual", "closed": "muted"}   # closed in gray, as in the depth vs volatility chart
 LB = 11.5
 
 fig, _ax = ja.figure("wide", "night")
@@ -35,8 +35,9 @@ def xfmt(ax):
     ax.xaxis.set_major_locator(FixedLocator([0.5, 1, 2]))
     ax.xaxis.set_minor_locator(NullLocator())
     ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g}x"))
-    ax.set_xlim(0.28, 3)
-    ax.set_xlabel("realized vol vs same day and hour, x", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
+    xr = np.exp(dec.rv)                                            # every decile of both series stays on the panel
+    ax.set_xlim(min(0.28, xr.min() / 1.12), max(3, xr.max() * 1.12))
+    ax.set_xlabel("realized vol vs its hour and day, x", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
     ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:+.0f}%" if v else "0%"))
     ja.zero(ax)
 
@@ -57,16 +58,16 @@ aR.set_ylim(*lim("dep", -12, 18))
 o = dec[dec.es == "open"]
 ja.signal(aL, np.exp(o.rv.iloc[-1]), p(o.sp.iloc[-1]), ms=0)
 ja.label_at(aL, 2.9, 19.5 if WIN.IS_ATLAS else -12, f"futures open: {gap['open', 'sp']:+.0f}%", "actual", dy=0, ha="right", size=LB)
-ja.label_at(aL, 0.3, aL.get_ylim()[0] + 2, "futures closed: noisy" if WIN.IS_ATLAS else f"futures closed: {gap['closed', 'sp']:+.0f}%",
-            "model", dy=0, ha="left", size=LB)
+ja.label_at(aL, 0.3, aL.get_ylim()[0] + 2, "futures closed: noisy" if WIN.IS_ATLAS else f"futures closed or break: {gap['closed', 'sp']:+.0f}%",
+            "muted", dy=0, ha="left", size=LB)
 ja.panel_title(aL, "quoted spread, time-weighted", size=LB)
-aL.set_ylabel("spread vs same day and hour, %", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
+aL.set_ylabel("spread vs its hour and day, %", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
 
-ja.label_at(aR, 2.9, 4.5, f"futures open: {gap['open', 'dep']:+.0f}%", "actual", dy=0, ha="right", size=LB)
-ja.label_at(aR, 0.3, aR.get_ylim()[0] + 2.5, "futures closed: noisy" if WIN.IS_ATLAS else f"futures closed: {gap['closed', 'dep']:+.0f}%",
-            "model", dy=0, ha="left", size=LB)
+ja.label_at(aR, 2.9, 4.5, f"futures open: {gap['open', 'dep']:+.0f}%" if WIN.IS_ATLAS else f"futures open: {gap['open', 'dep']:+.1f}%", "actual", dy=0, ha="right", size=LB)
+ja.label_at(aR, 0.3, aR.get_ylim()[0] + 2.5, "futures closed: noisy" if WIN.IS_ATLAS else f"futures closed or break: {gap['closed', 'dep']:+.0f}%",
+            "muted", dy=0, ha="left", size=LB)
 ja.panel_title(aR, "depth within 10 bps of mid", size=LB)
-aR.set_ylabel("depth vs same day and hour, %", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
+aR.set_ylabel("depth vs its hour and day, %", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
 
 holds = "depth holds" if abs(gap["open", "dep"]) < 5 else f"depth {gap['open', 'dep']:+.0f}%"
 ja.finish(fig, f"Volatile minutes widen the spread {gap['open', 'sp']:+.0f}%; {holds}",
