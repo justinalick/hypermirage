@@ -189,7 +189,8 @@ CHARTS=(metaorder_explainer survival concentration markouts markouts_violin fund
         impact_decay shape_cost monthly quotes_monthly maker_rotation taker_hours)
 charts() { inview; for c in "${CHARTS[@]}"; do echo "== chart: $c" >&2; "$PY" "charts/$c.py"; done; }
 
-CHECKS=(clock spotcheck funding queue cancels vol_spread studies)
+CHECKS=(clock spotcheck book funding queue cancels vol_spread studies)
+check_book() { sql analysis/ofi/check.sql; }   # replayed top of book vs the exchange's one-minute snapshots, per day
 check_studies() { for f in checks/studies/*_check.py; do heavy "$PY" "$f"; done; }   # recomputes of the new studies
 check_clock() { offhours; "$PY" checks/clock/holidays.py; }   # holiday halts in scripts/window.py vs the replayed book
 check_spotcheck() {

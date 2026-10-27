@@ -19,38 +19,54 @@ import window as WIN
 
 DAYS = WIN.ISO
 
-frames = []
+# One day at a time, so memory stays flat over long windows: integrity counts are summed per day, maker volume is
+# kept as (day, address) sums, and trades with a leg missing from their own day are regrouped across days at the end.
+COLS = ["coin", "price", "size", "timestamp", "address", "crossed", "trade_id", "order_id"]
+LEG = dict(n=pl.len(), mk=(~pl.col("crossed")).sum(), tk=pl.col("crossed").sum(), addrs=pl.col("address").n_unique(),
+           usd_min=pl.col("usd").min(), usd_max=pl.col("usd").max())
+n = dict(off_day=0, nulls=[0, 0, 0], nonpos=0, trades=0, bad=0, self=0, diffusd=0, dups=0)
+coins, mks, partial, taker_total = set(), [], [], 0.0
 for day in DAYS:
-    f = (pl.read_parquet(f"data/raw/xyz/fills/{day}.parquet",
-                         columns=["coin", "price", "size", "timestamp", "address", "crossed", "trade_id", "order_id"])
-         .filter(pl.col("coin") == "xyz:SP500")
-         .with_columns(file_day=pl.lit(day)))
-    frames.append(f)
-f = pl.concat(frames).with_columns(
-    usd=pl.col("price").cast(pl.Float64) * pl.col("size").cast(pl.Float64),
-    d=pl.col("timestamp").dt.convert_time_zone("UTC").dt.strftime("%Y-%m-%d"),
-)
+    raw = pl.read_parquet(f"data/raw/xyz/fills/{day}.parquet", columns=COLS)
+    coins |= set(raw["coin"].unique().to_list())
+    f = raw.filter(pl.col("coin") == "xyz:SP500").with_columns(
+        usd=pl.col("price").cast(pl.Float64) * pl.col("size").cast(pl.Float64),
+        d=pl.col("timestamp").dt.convert_time_zone("UTC").dt.strftime("%Y-%m-%d"))
+    del raw
+    n["off_day"] += f.filter(pl.col("d") != day).height
+    for i, c in enumerate(["address", "price", "size"]):
+        n["nulls"][i] += f[c].is_null().sum()
+    n["nonpos"] += f.filter(pl.col("usd") <= 0).height
+    n["dups"] += f.height - f.unique(["trade_id", "address", "crossed", "order_id"]).height
+    legs = f.group_by("trade_id").agg(**LEG)
+    whole = legs.filter(pl.col("n") >= 2)
+    n["trades"] += whole.height
+    n["bad"] += whole.filter((pl.col("mk") != 1) | (pl.col("tk") != 1)).height
+    n["self"] += whole.filter(pl.col("addrs") == 1).height
+    n["diffusd"] += whole.filter((pl.col("usd_max") - pl.col("usd_min")).abs() > 1e-6).height
+    partial.append(f.join(legs.filter(pl.col("n") < 2).select("trade_id"), on="trade_id").select("trade_id", "crossed", "address", "usd", "d"))
+    mks.append(f.filter(~pl.col("crossed")).group_by("d", "address").agg(usd=pl.col("usd").sum()))
+    taker_total += f.filter(pl.col("crossed"))["usd"].sum()
+    del f, legs
+part = pl.concat(partial)
+pl_legs = part.group_by("trade_id").agg(**LEG)
+n["trades"] += pl_legs.height
+n["bad"] += pl_legs.filter((pl.col("mk") != 1) | (pl.col("tk") != 1)).height
+n["self"] += pl_legs.filter(pl.col("addrs") == 1).height
+n["diffusd"] += pl_legs.filter((pl.col("usd_max") - pl.col("usd_min")).abs() > 1e-6).height
+cross_day = part.group_by("trade_id").agg(nd=pl.col("d").n_unique()).filter(pl.col("nd") > 1).height
 
 print("== integrity")
-coins = pl.concat([pl.read_parquet(f"data/raw/xyz/fills/{d}.parquet", columns=["coin"]).unique() for d in DAYS])
-print("coin names containing SP/500:", sorted(c for c in coins["coin"].unique() if "SP" in c or "500" in c))
-print("rows whose UTC date differs from the file date:", f.filter(pl.col("d") != pl.col("file_day")).height)
-print("null address / price / size:", f.select(pl.col("address").is_null().sum(), pl.col("price").is_null().sum(),
-                                               pl.col("size").is_null().sum()).row(0))
-print("non-positive notional rows:", f.filter(pl.col("usd") <= 0).height)
-legs = f.group_by("trade_id").agg(n=pl.len(), mk=(~pl.col("crossed")).sum(), tk=pl.col("crossed").sum(),
-                                  addrs=pl.col("address").n_unique(), usd_min=pl.col("usd").min(),
-                                  usd_max=pl.col("usd").max())
-print("trades:", legs.height, "| not exactly 1 maker + 1 taker:", legs.filter((pl.col("mk") != 1) | (pl.col("tk") != 1)).height,
-      "| same address both legs:", legs.filter(pl.col("addrs") == 1).height,
-      "| legs with different notional:", legs.filter((pl.col("usd_max") - pl.col("usd_min")).abs() > 1e-6).height)
-dups = f.height - f.unique(["trade_id", "address", "crossed", "order_id"]).height
-print("duplicate rows:", dups)
-cross_day = f.group_by("trade_id").agg(pl.col("d").n_unique().alias("nd")).filter(pl.col("nd") > 1).height
+print("coin names containing SP/500:", sorted(c for c in coins if "SP" in c or "500" in c))
+print("rows whose UTC date differs from the file date:", n["off_day"])
+print("null address / price / size:", tuple(n["nulls"]))
+print("non-positive notional rows:", n["nonpos"])
+print("trades:", n["trades"], "| not exactly 1 maker + 1 taker:", n["bad"], "| same address both legs:", n["self"],
+      "| legs with different notional:", n["diffusd"])
+print("duplicate rows:", n["dups"])
 print("trades whose two legs fall on different days:", cross_day)
 
-mk = f.filter(~pl.col("crossed")).group_by("d", "address").agg(usd=pl.col("usd").sum())
-taker_total = f.filter(pl.col("crossed"))["usd"].sum()
+mk = pl.concat(mks).group_by("d", "address").agg(usd=pl.col("usd").sum())
 maker_total = mk["usd"].sum()
 print(f"maker total ${maker_total:,.0f} | taker total ${taker_total:,.0f}")
 
@@ -93,8 +109,8 @@ for r in daily.iter_rows(named=True):
     assert (round(r["top3"], 1), round(r["top1"], 1), round(r["top10"], 1), r["makers"]) == c, (r, c)
     if WIN.IS_ATLAS:
         assert c == atlas[r["d"]], (r["d"], c, atlas[r["d"]])
-assert round(pooled, 1) == round(100 * J["pooled_top3"], 1) and len(tot14) == J["n_makers"] and legs.height == J["n_trades"]
+assert round(pooled, 1) == round(100 * J["pooled_top3"], 1) and len(tot14) == J["n_makers"] and n["trades"] == J["n_trades"]
 assert abs(maker_total - J["total"]) < 1 and abs(maker_total - taker_total) < 1
 WIN.expect("concentration check: pooled top 3, makers, trades, maker $B",
-           [round(pooled, 1), len(tot14), legs.height, round(maker_total / 1e9, 2)], [36.0, 2201, 612067, 3.10])
+           [round(pooled, 1), len(tot14), n["trades"], round(maker_total / 1e9, 2)], [36.0, 2201, 612067, 3.10])
 print("\nALL CHART VALUES MATCH")

@@ -27,7 +27,6 @@ import numpy as np
 import pandas as pd
 import sys as _sys; _sys.path.insert(0, "scripts")
 import window as _WIN
-_WIN.atlas_only("charts/survival_cache.py and charts/survival.py")   # first-version figure: its text describes the atlas window
 
 ROOT = os.path.abspath(".")
 LT = os.path.join(ROOT, "data/derived/lifecycle_touch/xyz_SP500/*.parquet")
@@ -91,6 +90,7 @@ def surv_at(curve, ms):
 
 
 def main() -> int:
+    _WIN.atlas_only("charts/survival_cache.py and charts/survival.py")   # first-version figure: its text describes the atlas window
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=os.path.join(ROOT, "out/survival_v1.png"))
     args = ap.parse_args()

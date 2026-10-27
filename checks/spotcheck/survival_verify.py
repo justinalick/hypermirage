@@ -32,6 +32,20 @@ import survival_viz as sv  # noqa: E402
 
 ROOT = sv.ROOT
 LT = sv.LT
+# Outside the two-week atlas the row-level steps would hold every order of the window in memory, so they run on
+# twelve days spread evenly over the window (first and last included); the estimator being checked is the same.
+_W = os.path.join(ROOT, "scripts"); sys.path.insert(0, _W)
+import window as WIN  # noqa: E402
+if not WIN.IS_ATLAS and WIN.N_DAYS > 14:
+    _days = sorted({WIN.DAYS[round(i * (WIN.N_DAYS - 1) / 11)] for i in range(12)})
+    _dir = os.path.join(ROOT, "data/checks/spotcheck/survival_sample")
+    os.makedirs(_dir, exist_ok=True)
+    for _f in os.listdir(_dir):
+        os.remove(os.path.join(_dir, _f))
+    for _d in _days:
+        os.symlink(os.path.realpath(os.path.join(ROOT, f"data/derived/lifecycle_touch/xyz_SP500/{_d}.parquet")), os.path.join(_dir, f"{_d}.parquet"))
+    LT = sv.LT = os.path.join(_dir, "*.parquet")
+    print("sample days:", " ".join(_days))
 OS = os.path.join(ROOT, "data/l4/order_statuses/xyz_SP500")
 CANCEL = ("displayed_pulled", "displayed_partial")
 KEEP = ("class IN ('displayed_pulled','displayed_partial','filled','still_open') "
