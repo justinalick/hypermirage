@@ -50,6 +50,7 @@ def build(df,col,win,midcol='mid'):
     df=df.copy(); df['r']=np.log(df[midcol]).diff()*1e4
     df.loc[df.t.diff()!=pd.Timedelta('1min'),'r']=np.nan
     df['rv']=df.r.rolling(win,min_periods=int(win*.8)).std()*np.sqrt(365*1440)/100
+    _rr=df.r.rolling(win,min_periods=int(win*.8)); df.loc[_rr.max()==_rr.min(),'rv']=0.0   # equal returns: exactly zero, not float residue
     dow=df.t.dt.day_of_week; h=df.t.dt.hour; mm=h*60+df.t.dt.minute
     wk=((dow==4)&(h>=21))|(dow==5)|((dow==6)&(h<22))|hol_mask(df.t)
     cash=(dow<5)&(mm>=810)&(mm<1200)&~wk&~df.t.dt.strftime('%Y-%m-%d').isin(WIN.NYSE_HOLIDAYS); closed=wk|((dow<4)&(h==21))
@@ -68,6 +69,11 @@ def gaps(d,label):
 base=build(m,'d10',15)
 print(base.groupby('g').agg(n=('rv','size'),days=('day','nunique')))
 gaps(base,'BASE d10 rv15        ')
+# same-day control (what analysis/depth_vol/prep2.py measures): depth relative to its own day, or its own weekend
+# closure, as well as to the hour of day; over long windows the hour-of-day baseline alone mixes in day-to-day trends
+sd=base.copy(); key=np.where(sd.wk, sd.t.dt.strftime('%G-W%V')+'w', sd.day.astype(str))
+sd['rel']=sd.rel-sd.groupby([sd.g,key]).rel.transform('median')
+gaps(sd,'BASE + same-day ctrl ')
 for w in [5,30,60]: gaps(build(m,'d10',w),f'd10 rv{w}             ')
 for c in ['d5','d25']: gaps(build(m,c,15),f'{c} rv15             ')
 # independent depth (L2 within 2 bps) and independent mid (L2)
