@@ -10,7 +10,7 @@ import window as WIN
 
 O = "data/derived/ofi"
 r = json.load(open(f"{O}/ofi_res.json")); g = json.load(open(f"{O}/gap_res.json"))
-HZ = ["1", "5", "10", "30", "60", "300"]; xl = ["1s", "5s", "10s", "30s", "1m", "5m"]; x = np.arange(len(HZ))
+HZ = ["1", "5", "10", "30", "60", "300"]; xl = ["1 s", "5 s", "10 s", "30 s", "1 min", "5 min"]; x = np.arange(len(HZ))
 h = r["h"]
 
 fig, ax0 = ja.figure("wide", "night"); ax0.remove()
@@ -44,8 +44,8 @@ rth, off = 100 * h["10"]["cont_ofi_r2_rth"], 100 * h["10"]["cont_ofi_r2_off"]
 a.plot([2, 2], [off, rth], color=ja.C["model"], lw=1.2, ls=(0, (2, 2)), zorder=3)
 a.plot([2, 2], [off, rth], ls="none", marker="D", ms=7, mfc=ja.C["ground"], mec=ja.C["model"], mew=1.8, zorder=5)
 AT = WIN.IS_ATLAS                                   # the atlas keeps its hand-placed label heights
-txt(a, 1.86 if AT else 2.14, rth, f"10s US cash {rth:.0f}%", "model", ha="right" if AT else "left")
-txt(a, 2.16 if AT else 2, 16.2 if AT else off - 4.5, f"10s off-hours {off:.0f}%", "model", ha="left" if AT else "center")
+txt(a, 1.86 if AT else 2.14, rth, f"10 s, US cash hours {rth:.0f}%", "model", ha="right" if AT else "left")
+txt(a, 2.16 if AT else 2, 16.2 if AT else off - 4.5, f"10 s, outside cash hours {off:.0f}%", "model", ha="left" if AT else "center")
 a.set_ylim(*ja.fit(0, 75, hi + pooled + [rth], 3)); a.set_yticks([0, 20, 40, 60]); a.yaxis.set_major_formatter(pct)
 txt(a, 4.14, med[-1], f"OFI, refit\nevery 30 min\n{med[0]:.0f}% to {med[-1]:.0f}%", "actual", linespacing=1.3)
 txt(a, 5, 11.6 if AT else max(pooled[3:]) + 4.5, "OFI / depth, pooled", "model", ha="right")
@@ -70,16 +70,16 @@ ja.line(b, x, oos, "actual", lw=3, marker="o", ms=6, zorder=4)
 TOP = 4.0 if AT else 4.6
 b.set_ylim(CLIP - 0.3, TOP); b.set_yticks([-3, -2, -1, 0, 1, 2, 3])
 b.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:+.0f}%" if v else "0%"))
-ja.signal(b, 0, oos[0], label=f"{oos[0]:.1f}% at 1s", dx=14, dy=10, size=LB, ms=0, role="actual")  # LED hidden on request; label kept
+ja.signal(b, 0, oos[0], label=f"{oos[0]:.1f}% at 1 s", dx=14, dy=10, size=LB, ms=0, role="actual")  # LED hidden on request; label kept
 txt(b, -0.25, TOP - 0.24, f"lagged OFI, {h['1']['oos_days']} test days pooled", "actual")
 txt(b, -0.25, TOP - 0.68, "lagged mid return only", "model")
 txt(b, 5.25, TOP - 0.68, "dots: test days", "faint", ha="right")
-ja.note_at(b, 2.5, -2.55, f"1s with a 1s delay: {100 * g['1s_gap1000ms']:.1f}%", role="muted", size=LB)
+ja.note_at(b, 2.5, -2.55, f"1 s with a 1 s delay: {100 * g['1s_gap1000ms']:.1f}%", role="muted", size=LB)
 ja.panel_title(b, "next bin: out of sample, vs a zero forecast", size=LB)
 b.set_xlabel("bin length", **AX); b.set_ylabel("out-of-sample R-squared, %", **AX)
 
 WIN.expect("OFI out-of-sample R2 at 1s, %", round(oos[0], 1), 1.3)
-ja.finish(fig, f"Order flow explains moves but forecasts only {oos[0]:.1f}% at 1s", hl=f"{oos[0]:.1f}%",
+ja.finish(fig, f"Order flow explains moves but forecasts only {oos[0]:.1f}% at 1 s", hl=f"{oos[0]:.1f}%",
           subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, {h['1']['n_bins']:,} one-second bins",
           source="Data: Hydromancer Reservoir / node data. Gross of spread/fees. Walk-forward by day. " + ("Dots clip at -3%." if AT else "Dots clip at -3% and +3.2%."))
 ja.save(fig, "out/ofi.png")

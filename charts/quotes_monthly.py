@@ -52,7 +52,7 @@ c.tick_params(which="minor", length=0)
 leg = c.legend(loc="lower right", frameon=False, fontsize=9.5, ncol=2, handletextpad=0.2, columnspacing=0.8)
 for t_ in leg.get_texts(): t_.set_color(ja.C["muted"]); t_.set_family(ja.MONO)
 ja.panel_title(c, "cancels per day vs that day's vol", size=LB)
-c.set_xlabel("vol of 1-min mid returns, bps, log", **AX); c.set_ylabel("cancels per day, log", **AX)
+c.set_xlabel("vol of 1 min mid returns, bps, log", **AX); c.set_ylabel("cancels per day, log", **AX)
 w = d[d.wd]
 rho = np.corrcoef(np.log(w.vol_d_bps.astype(float)), np.log(w.cancels.astype(float)))[0, 1]
 ja.label_at(c, c.get_xlim()[0] * 1.08, c.get_ylim()[1] / 1.25, f"corr. of logs {rho:+.2f}", "ink", dy=0, ha="left", size=10).set_bbox(None)

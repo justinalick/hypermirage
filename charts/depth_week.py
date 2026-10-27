@@ -47,8 +47,8 @@ wed_brk = 2 * 24 + 17 - OFF                             # Wed 5pm New York (21:0
 ja.signal(ax, wed_brk + 0.5, y[wed_brk], ms=0)
 ytop = ax.get_ylim()[1]
 ja.label_at(ax, 3 * 24 + 17, ytop - 2.8, f"US cash hours: ${med['cash']:.1f}M", "actual", dy=0, ha="center", size=15)
-ja.label_at(ax, wed_brk - 1.5, 1.0, f"5pm ET, CME pause: ${med['break']:.1f}M", "actual", dy=0, ha="right", size=15)
-ja.label_at(ax, 5 * 24 + 24, 7.0, "weekend", "muted", dy=0, ha="center", size=15)
+ja.label_at(ax, wed_brk - 1.5, 1.0, f"daily break, 5pm ET: ${med['break']:.1f}M", "actual", dy=0, ha="right", size=15)
+ja.label_at(ax, 5 * 24 + 24, 7.0, "futures closed\n(weekend)", "muted", dy=0, ha="center", size=15)
 r = med["break"] / df.d10_net[np.isin(s_, ["cash", "overnight"])].median() * 1e6
 words = [(0.28, 0.38, "a third"), (0.2, 0.28, "a quarter"), (0.38, 0.45, "two fifths"), (0.45, 0.55, "half")]
 frac = next((w for lo, hi, w in words if lo <= r < hi), f"{r:.0%}")

@@ -11,7 +11,8 @@ import window as WIN
 S = "data/derived/markout/rerun"
 r = json.load(open(f"{S}/markout_res.json"))
 H = ["0", "0.5", "1", "2", "5", "10", "20", "30", "60", "120", "300"]
-XL = ["fill", "0.5s", "1s", "2s", "5s", "10s", "20s", "30s", "1m", "2m", "5m"]
+XL = ["fill", "0.5s", "1s", "2s", "5s", "10s", "20s", "30s", "1m", "2m", "5m"]   # compact ticks
+XP = ["fill", "0.5 s", "1 s", "2 s", "5 s", "10 s", "20 s", "30 s", "1 min", "2 min", "5 min"]   # the same horizons in prose
 x = np.arange(len(H))
 LB = 11.5
 F = r["fees_bps"]
@@ -78,7 +79,7 @@ pos = [i for i in range(1, len(H)) if mt[i] > 0]
 late = (mt[H.index("120")] + mt[H.index("300")]) / 2
 late_txt = "0 bps" if abs(late) < 0.005 else f"{late:+.2f} bps"   # no "-0.00"
 if pos and all(mt[i] > 0 for i in range(pos[0], len(H))):
-    ja.note_at(a, 4.6, YHI - 0.1 if WIN.IS_ATLAS else YLO + 0.25 * (YHI - YLO) / 1.55, f"taker turns positive after about {XL[pos[0]]},\nabout {late_txt} at 2 to 5 min", "ink", size=10.5)
+    ja.note_at(a, 4.6, YHI - 0.1 if WIN.IS_ATLAS else YLO + 0.25 * (YHI - YLO) / 1.55, f"taker turns positive after about {XP[pos[0]]},\nabout {late_txt} at 2 to 5 min", "ink", size=10.5)
 else:
     ja.note_at(a, 7.8, YLO + 0.3 * (YHI - YLO) / 1.55, f"taker markout {late_txt}\nat 2 to 5 min", "ink", size=10.5)
 ja.panel_title(a, "all fills, taker vs maker (95% CI)", size=LB)
@@ -96,11 +97,11 @@ for i, (k, role, lab) in enumerate(B[::-1]):
 net = r["< $10k"]["60"][0] - F["taker_lt10k"]
 nobox(ja.note_at(b, 5.75 if WIN.IS_ATLAS else 5.9, YLO + (0.32 if WIN.IS_ATLAS else 0.2), f"gross of fees: avg taker fee {F['taker']:.2f} bps\n"
                  f"incl. builder fees (exchange alone {F['taker_ex_builder']:.2f})\n"
-                 f"under $10k pay {F['taker_lt10k']:.2f}: " + (f"about {-net:.0f} bp underwater" if net < 0 and WIN.IS_ATLAS else f"about {-net:.1f} bp underwater" if net < 0 else f"{net:+.1f} bp net at 1m"), "muted", size=10.5))
+                 f"under $10k pay {F['taker_lt10k']:.2f}: " + (f"about {-net:.0f} bp underwater" if net < 0 and WIN.IS_ATLAS else f"about {-net:.1f} bp underwater" if net < 0 else f"{net:+.1f} bp net at 1 min"), "muted", size=10.5))
 ja.panel_title(b, "taker side, by taker order size (95% CI)", size=LB)
 
 follows = late > 0
 ja.finish(fig, f"Takers pay {-mt[0]:.2f} bps to cross" + (", then the price follows them" if follows else ""), hl=f"{-mt[0]:.2f} bps",
           subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, {r['n_trades']:,} trades, ${r['notional'] / 1e9:.1f}B notional",
-          source="Data: Hydromancer Reservoir / node data. Mid as of every top-of-book change, so 0.5s and 1s are exact.")
+          source="Data: Hydromancer Reservoir / node data. Mid as of every top-of-book change, so 0.5 s and 1 s are exact.")
 ja.save(fig, "out/markouts.png")

@@ -50,7 +50,9 @@ else:                                                    # two lines, so it fits
     pos['spread out'] = (0.5, pos['spread out'][1])
 for nm, (x_, y_) in pos.items():
     sep = "\n" if nm == 'spread out' and not ATL else " "
-    t = ja.label_at(a, x_, y_, f"{nm}{sep}{n_by[nm]:,}", ROLE[nm], dy=0, ha="left", size=LB); t.set_bbox(None); t.set_va("center")
+    t = ja.label_at(a, x_, y_, f"{nm}{sep}{n_by[nm]:,}", ROLE[nm], dy=0, ha="left", size=LB); t.set_va("center")
+    if nm != 'back-loaded':   # back-loaded keeps its ground-colored backing: dotted IQR lines run under it
+        t.set_bbox(None)
 ja.panel_title(a, "median path; middle 50% shade/dotted; dashed: even pace", size=LB)
 a.set_xlabel("elapsed share of duration, %", **AX); a.set_ylabel("share of metaorder filled, %", **AX)
 

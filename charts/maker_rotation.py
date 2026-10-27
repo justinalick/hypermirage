@@ -1,6 +1,6 @@
 """xyz:SP500 maker rotation week by week, @justinalick night. Reads data/derived/maker_rotation/rotation.json
 (analysis/maker_rotation/rotation.py). Groups: declared sub-accounts merged into their master, labeled by pooled volume."""
-import json, sys, warnings; warnings.filterwarnings("ignore")
+import datetime as dt, json, sys, warnings; warnings.filterwarnings("ignore")
 sys.path.insert(0, "charts")
 import numpy as np, matplotlib; matplotlib.use("Agg")
 from matplotlib.ticker import FuncFormatter
@@ -11,6 +11,16 @@ import window as WIN
 R = json.load(open("data/derived/maker_rotation/rotation.json"))
 G, A = R["groups"], R["addresses"]
 weeks = G["weeks"]; x = np.arange(len(weeks))
+_ymd = lambda s_: dt.date(int(s_[:4]), int(s_[4:6]), int(s_[6:8]))
+PART = [i for i, part in ((0, _ymd(WIN.START).weekday() != 0), (len(weeks) - 1, _ymd(WIN.END).weekday() != 6)) if part]
+
+
+def hollow(ax, xs, ys, role, ms):   # partial ISO weeks at the window edges: hollow markers
+    for i in PART:
+        if ys[i] is not None and np.isfinite(ys[i]):
+            ax.plot(xs[i], ys[i], marker="o", ms=ms, mfc=ja.C["ground"], mec=ja.C[role], mew=1.8, ls="none", zorder=5)
+
+
 LB = 11
 AX = dict(color=ja.C["muted"], family=ja.MONO, fontsize=LB)
 fig, ax0 = ja.figure("wide", "night"); ax0.remove()
@@ -24,7 +34,8 @@ for k in G["top3_groups_ever"]:
     a.plot(x, r, color=ja.C[role], lw=3 if k in ROLE else 1.5, alpha=1 if k in ROLE else 0.6, marker="o", ms=4 if k in ROLE else 3,
            zorder=3 if k in ROLE else 2)
     if k in ROLE:
-        t = ja.label_at(a, x[-1] + 0.4, r[-1], f"{k}  {100 * G['pooled_share'][k]:.0f}%", role, dy=0, ha="left", size=10)
+        hollow(a, x, r, role, 7)
+        t = ja.label_at(a, x[-1] + 0.55, r[-1], f"{k}  {100 * G['pooled_share'][k]:.0f}%", role, dy=0, ha="left", size=10)
         t.set_va("center")
 a.invert_yaxis(); a.set_ylim(MAXR + 1, 0.4); a.set_yticks([1, 3, 5, 10, MAXR + 0.5], ["1", "3", "5", "10", f"{MAXR}+"])
 a.axhspan(0.5, 3.5, color=ja.C["panel"], lw=0, zorder=0)
@@ -36,11 +47,13 @@ a.set_xlabel("ISO week (shade: top 3; thin gray: other groups that made the top 
 
 ja.line(b, x, G["weekly_top3_share"], "model", lw=2.5, marker="o", ms=4)
 ja.line(b, x, A["weekly_top3_share"], "actual", lw=2.5, marker="o", ms=4)
+hollow(b, x, np.array(G["weekly_top3_share"], float), "model", 7)
+hollow(b, x, np.array(A["weekly_top3_share"], float), "actual", 7)
 b.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.0%}"))
 b.set_xticks(x[::step * 2], [w[5:] for w in weeks[::step * 2]]); b.set_ylim(0, max(G["weekly_top3_share"]) + 0.12)
 ja.label_at(b, 0, max(G["weekly_top3_share"]) + 0.07, "groups (sub-accounts merged)", "model", dy=0, ha="left", size=10).set_bbox(None)
 ja.label_at(b, 0, max(G["weekly_top3_share"]) + 0.02, "single addresses", "actual", dy=0, ha="left", size=10).set_bbox(None)
-ja.panel_title(b, "top-3 share of maker volume, %", size=LB); b.set_xlabel("ISO week", **AX)
+ja.panel_title(b, "top-3 share of maker volume, %", size=LB); b.set_xlabel("ISO week (hollow: partial week)" if PART else "ISO week", **AX)
 rho = float(np.median(G["rank_rho_week_to_week"]))
 r1 = G["weekly_rank"]["G1"]; k = len(r1)
 while k > 0 and r1[k - 1] == 1: k -= 1                 # start of G1's closing run at rank 1

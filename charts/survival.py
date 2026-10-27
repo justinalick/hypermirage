@@ -27,7 +27,7 @@ for b, lab, role in BUCKETS[::-1]:
 ax.axvline(1, color=ja.C["faint"], lw=1, ls=(0, (2, 3)), zorder=1)
 ax.set_xscale("log"); ax.set_xlim(0.028, 3600); ax.set_ylim(0, 103)
 ax.xaxis.set_major_locator(FixedLocator([0.1, 1, 10, 60, 600, 3600])); ax.xaxis.set_minor_locator(NullLocator())
-ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: {0.1: "0.1s", 1: "1s", 10: "10s", 60: "1m", 600: "10m", 3600: "1h"}.get(round(v, 1), "")))
+ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: {0.1: "0.1 s", 1: "1 s", 10: "10 s", 60: "1 min", 600: "10 min", 3600: "1 h"}.get(round(v, 1), "")))
 ax.set_yticks([0, 25, 50, 75, 100]); ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.0f}%"))
 
 def lab(x, y, text, role, ha="left", va="center", rot=0, size=LB):
@@ -55,9 +55,10 @@ fig.canvas.draw()
 sa = 100 * (1 - c1["a"])
 ja.signal(ax, 1, sa, ms=0)
 N = {b: f"{cv[b]['n'] / 1e6:.1f}M" for b in "abcd"}
-lab(0.86, 18.5, f"at or inside the touch ({N['a']})\n{c1['a']:.0%} cancelled by 1s", "actual", ha="right", size=11)
-lab(0.86, 5.5, f"up to 1 bp behind ({N['b']})\n{c1['b']:.0%} cancelled by 1s", "model", ha="right", size=11)
-lab(1.2, 100 * (1 - c1["d"]) + 4, f"more than 5 bps: {c1['d']:.0%} cancelled by 1s", "dim", va="bottom")
+lab(0.86, 18.5, f"at or inside the touch ({N['a']})\n{c1['a']:.0%} cancelled by 1 s", "actual", ha="right", size=11)
+lab(0.86, 5.5, f"up to 1 bp behind ({N['b']})\n{c1['b']:.0%} cancelled by 1 s", "model", ha="right", size=11)
+lab(1.2, 100 * (1 - c1["d"]) + 13.5, f"more than 5 bps: {c1['d']:.0%} cancelled by 1 s", "dim", va="bottom")
+lab(1.2, 100 * (1 - c1["d"]) + 5.5, f"1 to 5 bps: {c1['c']:.0%} cancelled by 1 s", "faint", va="bottom")
 along("d", 3, 40, 8, f"more than 5 bps behind ({N['d']})", "dim")
 along("c", 2.2, 20, 8, f"1 to 5 bps behind ({N['c']})", "faint")
 
@@ -65,7 +66,7 @@ ja.panel_title(ax, "displayed orders, by distance from the touch at entry", size
 ax.set_xlabel("time since the order first appeared in the book, log scale", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
 ax.set_ylabel("share of orders still resting, %", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
 m = D["meta"]
-ja.finish(fig, f"{c1['a']:.0%} of quotes at or inside the touch are cancelled within 1s", hl=f"{c1['a']:.0%}",
+ja.finish(fig, f"{c1['a']:.0%} of quotes at or inside the touch are cancelled within 1 s", hl=f"{c1['a']:.0%}",
           subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, {m['n'] / 1e6:.1f}M orders, {m['accts']:,} accounts",
-          source="Data: Hydromancer Reservoir / node data. Kaplan-Meier; fills and day-end orders censored. Dotted line: 1s.")
+          source="Data: Hydromancer Reservoir / node data. Kaplan-Meier; fills and day-end orders censored. Dotted line: 1 s.")
 ja.save(fig, "out/survival.png")

@@ -58,13 +58,13 @@ aR.set_ylim(*lim("dep", -12, 18))
 o = dec[dec.es == "open"]
 ja.signal(aL, np.exp(o.rv.iloc[-1]), p(o.sp.iloc[-1]), ms=0)
 ja.label_at(aL, 2.9, 19.5 if WIN.IS_ATLAS else -12, f"futures open: {gap['open', 'sp']:+.0f}%", "actual", dy=0, ha="right", size=LB)
-ja.label_at(aL, 0.3, aL.get_ylim()[0] + 2, "futures closed: noisy" if WIN.IS_ATLAS else f"futures closed or break: {gap['closed', 'sp']:+.0f}%",
+ja.label_at(aL, 0.3, aL.get_ylim()[0] + 2, "futures closed: noisy" if WIN.IS_ATLAS else f"futures closed or daily break: {gap['closed', 'sp']:+.0f}%",
             "muted", dy=0, ha="left", size=LB)
 ja.panel_title(aL, "quoted spread, time-weighted", size=LB)
 aL.set_ylabel("spread vs its hour and day, %", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
 
 ja.label_at(aR, 2.9, 4.5, f"futures open: {gap['open', 'dep']:+.0f}%" if WIN.IS_ATLAS else f"futures open: {gap['open', 'dep']:+.1f}%", "actual", dy=0, ha="right", size=LB)
-ja.label_at(aR, 0.3, aR.get_ylim()[0] + 2.5, "futures closed: noisy" if WIN.IS_ATLAS else f"futures closed or break: {gap['closed', 'dep']:+.0f}%",
+ja.label_at(aR, 0.3, aR.get_ylim()[0] + 2.5, "futures closed: noisy" if WIN.IS_ATLAS else f"futures closed or daily break: {gap['closed', 'dep']:+.0f}%",
             "muted", dy=0, ha="left", size=LB)
 ja.panel_title(aR, "depth within 10 bps of mid", size=LB)
 aR.set_ylabel("depth vs its hour and day, %", color=ja.C["muted"], family=ja.MONO, fontsize=LB)

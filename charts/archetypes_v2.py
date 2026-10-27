@@ -36,9 +36,10 @@ LB = 10
 AX = dict(color=ja.C["muted"], family=ja.MONO, fontsize=LB)
 
 def short(s):
-    s = s.replace("Post-only makers (ALO quotes, ", "post-only makers, ").replace(" s median rest)", "s rest")
+    s = s.replace("Post-only makers (ALO quotes, ", "post-only makers, ").replace(" s median rest)", " s rest")
     s = s.replace("Builder takers, ", "builder: ").replace("Builder takers", "builder takers")
     s = s.replace("API takers, ", "API: ").replace("front-end market orders", "front-end mkt")
+    s = s.replace("weekend", "futures closed")   # the tag counts all futures-closed hours
     return s
 
 def bare(ax):
@@ -147,7 +148,7 @@ c_.set_xlabel("overlap with best match\nin 30 refits (Jaccard, 0-1)", **AX); c_.
 FN = {'log_notional': 'Total notional', 'maker_share': 'Maker share', 'log_med_order': 'Order size', 'log_cancel_to_fill': 'Cancel-to-fill',
  'log_rest_s': 'Rest time', 'log_dist_bps': 'Dist. from touch', 'has_resting': 'Has resting orders', 'alo_share': 'Post-only share',
  'frontend_share': 'Front-end mkt share', 'trigger_share': 'Stop / take-profit', 'builder_share': 'Builder-routed', 'twap_share': 'TWAP share',
- 'cash_share': 'US cash hours', 'weekend_share': 'Weekend share', 'hour_entropy': 'Spread over hours', 'days_active': 'Days active',
+ 'cash_share': 'US cash hours', 'weekend_share': 'Futures closed', 'hour_entropy': 'Spread over hours', 'days_active': 'Days active',
  'markout60': '60 s markout', 'log_turnover': 'Turnover', 'net_flow_ratio': 'One-way net flow'}
 M = pd.DataFrame(Z, columns=X.columns).groupby(lab).median().loc[order]
 h = ja._px_axes(fig, 1048, RT, 380, RP * n)          # rows line up with C's bars
@@ -174,7 +175,8 @@ fig.text(48 / W, 1 - ((RB + 150) if MANY else (H - 76)) / H,
 
 n_ok = int((jac >= 0.7).sum())
 WIN.expect("archetypes: clusters with Jaccard >= 0.7", n_ok, 2)   # cluster count itself varies run to run (UMAP)
-ja.finish(fig, f"{'Only ' if n_ok < n / 2 else ''}{n_ok} of {n} trader archetypes hold up", hl=f"{n_ok} of {n}",
+ja.finish(fig, f"{n_ok} of {n} clusters are stable, but so are shuffled ones" if not WIN.IS_ATLAS
+          else f"{'Only ' if n_ok < n / 2 else ''}{n_ok} of {n} trader archetypes hold up", hl=f"{n_ok} of {n}",
           subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, {len(f):,} accounts with 30+ fills",
           source="Data: Hydromancer Reservoir / node data. One address is not one firm.")
 ja.save(fig, "out/archetypes_v2.png")

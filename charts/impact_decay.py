@@ -59,12 +59,12 @@ ytop = b.get_ylim()[1]
 ja.label_at(b, -0.5, ytop - 0.06, "gray: drift in the 5 min after the end", "muted", dy=0, ha="left", size=9.5).set_bbox(None)
 ja.label_at(b, -0.5, ytop - 0.16, "blue: random moves, same size and trend", "model", dy=0, ha="left", size=9.5).set_bbox(None)
 ja.label_at(b, -0.5, ytop - 0.26, "diamond: the difference (color = size), 95% CI", "ink", dy=0, ha="left", size=9.5).set_bbox(None)
-ja.panel_title(b, "5-min drift vs matched control, bps", size=LB)
+ja.panel_title(b, "5 min drift vs matched control, bps", size=LB)
 b.set_xlabel("metaorder size", **AX); b.set_ylabel("bps, + = the trade's direction", **AX)
 
 big = G["$1M+"]["kept_300"][0]
 n = sum(G[k]["n"] for k in BK)
-ja.finish(fig, f"Big metaorders keep {big:.0%} of their impact after 5 minutes", hl=f"{big:.0%}",
+ja.finish(fig, f"Big metaorders keep {big:.0%} of their impact after 5 min", hl=f"{big:.0%}",
           subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, {n:,} metaorders, no own trading for 5 min after",
           source="Data: Hydromancer Reservoir / node data. Equal-weighted means; CIs: day bootstrap. Control: same time of day, other days.")
 ja.save(fig, "out/impact_decay.png")

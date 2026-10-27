@@ -21,8 +21,7 @@ Research only; not investment advice. Disclosure: the author holds a long positi
 
 321.4M displayed orders from 24,103 accounts, replayed block by block (about 70 ms) from node order
 statuses and checked against the exchange's one-minute book snapshots. The numbers below were
-recomputed with separate code (`checks/`), except the week-to-week and month-to-month rank statistics
-of the maker-rotation and taker-hours studies. `./run.sh charts` rebuilds the chart for each result in `out/`.
+recomputed with separate code (`checks/`). `./run.sh charts` rebuilds the chart for each result in `out/`.
 The first, two-week edition of this atlas covered 2026-10-08 to 2026-10-21; `HM_START=20261008
 HM_END=20261021 ./run.sh all` still reproduces it (see Reproduce).
 
@@ -33,7 +32,7 @@ than 5 minutes (liquidations excluded); each order in the run is a child order. 
 ### Five headline findings
 
 1. **Liquidity runs mostly on the CME clock, not the stock market's.** Median depth within 10 bps of mid is
-   $13.7M in US cash hours, $11.4M in other futures hours, $4.6M in the daily futures break (about two
+   $13.7M in US cash hours, $11.4M overnight, $4.6M in the daily futures break (about two
    fifths) and $2.7M while futures are closed. A hidden Markov model finds little beyond that clock:
    session alone matches its two-state split in 93.8% of minutes.
 2. **Almost nothing on display ever trades.** 0.23% of $18.9T in displayed notional filled (re-placed
@@ -59,12 +58,12 @@ than 5 minutes (liquidations excluded); each order in the run is a child order. 
   the touch and 57% of orders up to 1 bp behind it, against 37% of orders more than 5 bps away.
 - **Maker concentration and rotation.** The top three maker accounts supply 25.9% of maker volume pooled
   and 36% on the median day; merging declared sub-accounts gives 34.9%. The same few groups lead most
-  weeks (top-20 rank correlation 0.93 week to week), and one has ranked first for the last 17 weeks (rank statistics not recomputed separately).
+  weeks (top-20 rank correlation 0.93 week to week), and one has ranked first for the last 17 weeks.
 - **Volatility widens the spread, not the book, while futures trade.** The most volatile tenth of
   minutes has a median quoted spread 17% wider than the calmest tenth (90% CI +15% to +19%), with depth
   flat (-0.6%). With futures closed, volatile minutes are both wider (+89%) and thinner (-13%).
-- **Takers who lead the price keep leading.** Ranking the ten largest taker clusters by 60 s markout,
-  one month predicts the next (r = 0.71); the largest taker sits near +0.4 bps every month.
+- **Takers who lead the price keep leading.** Correlating the ten largest taker clusters' 60 s markouts
+  month to month, one month predicts the next (r = 0.71 over six month pairs); the largest taker sits near +0.4 bps every month.
 - **Funding and the oracle premium.** The perp trades about 3 bps below the oracle only while CME
   futures are open (median -3.2 bps, against -0.05 bps while they are closed). Funding is small next to
   that: over the six months a constant long paid 0.25%; from 2026-03-18 to 2026-10-25 it collected 0.66%,
@@ -86,9 +85,9 @@ than 5 minutes (liquidations excluded); each order in the run is a child order. 
   gives a correlation of -0.10 over 209 days (t = -1.47).
 - **Book regimes reduce to the clock.** A third HMM state only separates calm from active minutes at
   similar depth and is unstable across window halves (ARI 0.86 and 0.42).
-- **Trader archetypes only partly hold up.** 16 of 32 clusters are close to stable across refits, all
-  of them taker styles plus one small slow-maker group; the post-only maker block that supplies 63% of
-  notional does not split stably, and shuffled data still yields 11 clusters.
+- **Trader archetypes are not clearly real.** 16 of 32 clusters are close to stable across refits, but
+  the same pipeline on shuffled data (each feature permuted, no real account) finds 11 clusters and 9 of
+  them pass the same stability test, so stability alone does not show trader types.
 
 All results describe measured behavior, not intent. An account is an address, not a firm.
 

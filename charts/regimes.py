@@ -45,7 +45,7 @@ OFF = int(WIN.utc_offset_hours())
 c_open, c_close, halt = 9.5 - OFF, 16 - OFF, 17 - OFF  # UTC hours of the cash open, close and the CME halt
 for x in (c_open, c_close, halt, halt + 1):
     ax.axvline(x, color=C['ground'], lw=1.5, ls=(0, (2, 2)))
-for x, t, ha in [(c_open, "cash open", "center"), (c_close - 0.1, "close", "right"), (halt, "ES halt", "left")]:
+for x, t, ha in [(c_open, "cash open", "center"), (c_close - 0.1, "close", "right"), (halt, "daily break", "left")]:
     ax.text(x, -0.6, t, ha=ha, va="bottom", fontsize=9.5,
             color=C['muted'], family=ja.MONO)
 ja.panel_title(ax, "hidden Markov model (HMM) state by minute", size=LB).set_y(1.05)
@@ -62,7 +62,7 @@ RT, RH = 840, 296
 # ---- B: medians by state
 ax = ja._px_axes(fig, 264, RT, 312, RH)
 prof = pd.DataFrame(r3["profile"])
-metrics = [("depth10_musd", "depth within\n10 bps, $M"), ("spread_bps", "spread, bps"), ("rv5_ann_pct", "5-min vol,\nannualized, %"),
+metrics = [("depth10_musd", "depth within\n10 bps, $M"), ("spread_bps", "spread, bps"), ("rv5_ann_pct", "5 min vol,\nannualized, %"),
            ("abs_imb", "|top-of-book\nimbalance|")]
 y = np.arange(len(metrics))
 for k in range(3):
@@ -102,8 +102,8 @@ ax.set_xlabel("to state", **AX); ax.set_ylabel("from state, mean dwell", **AX)
 ax = ja._px_axes(fig, 1296, RT, 192, RH)
 order = ["US cash", "ES overnight", "ES daily break", "futures closed (wknd)"]
 hm = lambda h: f"{int(h)}:{int(round(60 * (h % 1))):02d}"
-nice = [f"US cash\n{hm(c_open)}-{hm(c_close)}", "ES overnight",
-        f"ES daily break\n{halt}-{halt + 1} Mon-Thu",
+nice = [f"US cash\n{hm(c_open)}-{hm(c_close)}", "overnight",
+        f"daily break\n{halt}-{halt + 1} Mon-Thu",
         f"futures closed\nFri {halt}-Sun {halt + 1}" if not WIN.HOLIDAYS else f"futures closed\nweekends, holidays"]
 mins = r3["session_minutes"]
 left = np.zeros(4)
@@ -134,5 +134,5 @@ for yb, t in ((H - 100, f"Thin vs deep (2 states) {holds2} on {part} alone (ARI 
 who = "weekends" if not WIN.HOLIDAYS else "futures-closed hours"
 ja.finish(fig, f"Regimes follow the CME clock: {who} {100 * wk:.1f}% thin", hl=f"{100 * wk:.1f}% thin",
           subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, {r3['n_minutes']:,} minutes, 3-state HMM",
-          source="Data: Hydromancer Reservoir / node data. ES = CME E-mini S&P 500 futures. ARI: adjusted Rand index, 1 = same states.")
+          source="Data: Hydromancer Reservoir / node data. Minutes missing a feature dropped. ARI: adjusted Rand index, 1 = same states.")
 ja.save(fig, "out/regimes.png")

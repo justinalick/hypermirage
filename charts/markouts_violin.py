@@ -14,7 +14,7 @@ S ="data/derived/markout/rerun"
 d = json.load(open(f"{S}/hourly.json")); r = json.load(open(f"{S}/markout_res.json"))
 B = [("lt10k", "< $10k", "under $10k", "actual"), ("10k_100k", "$10k to $100k", "$10k to $100k", "model"),
      ("ge100k", ">= $100k", "$100k+", "faint")]
-Hs = [1, 10, 60]; HL = ["1s", "10s", "1m"]
+Hs = [1, 10, 60]; HL = ["1 s", "10 s", "60 s"]
 YL = (-1.6, 1.6)
 LB = 11.5
 
@@ -67,10 +67,10 @@ for j, (ax, (k, rk, lab, role)) in enumerate(zip(axs, B)):
                     family="IBM Plex Sans")
         if k == "lt10k" and h == 10:   # LED beside the median box, not on it
             ja.signal(ax, i - 0.14, med, ms=0, role="actual")
-            t = ja.label_at(ax, i, -0.88, f"ahead in {ahead[10]:.0%} at 10s", "actual", dy=0, size=LB)
+            t = ja.label_at(ax, i, -0.88, f"ahead in {ahead[10]:.0%} at 10 s", "actual", dy=0, size=LB)
             if WIN.IS_ATLAS: t.set_bbox(None)   # long windows: knockout, the violin tails reach the label
         if k == "lt10k" and h == 1:
-            t = ja.label_at(ax, i + 0.05, 0.72, f"ahead in {ahead[1]:.0%}\nat 1s", "actual", dy=0, size=LB)
+            t = ja.label_at(ax, i + 0.05, 0.72, f"ahead in {ahead[1]:.0%}\nat 1 s", "actual", dy=0, size=LB)
             if WIN.IS_ATLAS: t.set_bbox(None)
     ax.set_xticks(range(3), HL, fontsize=11); ax.set_xlim(-0.55, 2.55); ax.set_ylim(*YL)
     ax.set_yticks([-1.5, -1, -0.5, 0, 0.5, 1, 1.5])
@@ -89,7 +89,7 @@ _k = ja.note_at(axs[1], -0.48, -1.22 if WIN.IS_ATLAS else -1.0, "box: middle 50%
 _k.set_ha("left")
 if WIN.IS_ATLAS: _k.set_bbox(None)
 
-ja.finish(fig, f"Orders under $10k are ahead in {ahead[10]:.0%} of hours at 10s", hl=f"{ahead[10]:.0%}",
+ja.finish(fig, f"Orders under $10k are ahead in {ahead[10]:.0%} of hours at 10 s", hl=f"{ahead[10]:.0%}",
           subtitle=f"xyz:SP500 perp on Hyperliquid, {WIN.label()}, taker markout per UTC hour, bps",
           source=f"Data: Hydromancer Reservoir / node data. Gross of fees: {F['taker']:.2f} bps taker fee incl. builder "
                  f"({F['taker_ex_builder']:.2f} exchange); {F['taker_lt10k']:.2f} under $10k.")

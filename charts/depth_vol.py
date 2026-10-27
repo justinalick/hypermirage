@@ -44,7 +44,7 @@ def xfmt(ax, lo):
     ax.set_xscale("log"); ax.xaxis.set_major_locator(FixedLocator([1, 2, 5, 10, 20, 40]))
     ax.xaxis.set_minor_locator(NullLocator()); ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g}%"))
     ax.set_xlim(lo, 45)
-    ax.set_xlabel("trailing 15-min realized vol, annualized, log", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
+    ax.set_xlabel("trailing 15 min realized vol, annualized, log", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
 
 
 # left: across hours
@@ -59,9 +59,9 @@ aL.set_yscale("log"); aL.yaxis.set_major_locator(FixedLocator([1, 2, 5, 10, 20, 
 aL.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"${v:g}M")); aL.set_ylim(min(0.8, h.d10.min() / 1e6 / 1.2), 50)
 ja.label_at(aL, 0.65, 33, f"dashed: log-log fit, corr. of logs {rho:+.2f}", "muted", dy=0, ha="left", size=LB)
 ja.label_at(aL, 24, 7.2, "US cash hours", "actual", dy=0, ha="center", size=LB)
-ja.label_at(aL, 2.6, 21, "overnight, futures open", "model", dy=0, ha="center", size=LB)
-ja.label_at(aL, 0.65, 1.25, "futures closed (weekend, daily break)" if not WIN.HOLIDAYS
-            else "futures closed: weekend, holiday, break", "faint", dy=0, ha="left", size=LB)
+ja.label_at(aL, 2.6, 21, "overnight", "model", dy=0, ha="center", size=LB)
+ja.label_at(aL, 0.65, 1.25, "futures closed or daily break" if not WIN.HOLIDAYS
+            else "futures closed or daily break", "faint", dy=0, ha="left", size=LB)
 ja.panel_title(aL, "across hours, hourly medians", size=LB)
 aL.set_ylabel("depth within 10 bps, $, log", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
 
@@ -85,7 +85,7 @@ ja.signal(aR, c.rv.iloc[-1], p(c.rel.iloc[-1]), ms=0)
 ja.label_at(aR, 42, -9.5 if WIN.IS_ATLAS else 4.5, f"cash: {gap['cash']:+.1f}%", "actual", dy=0, ha="right", size=LB)
 ja.label_at(aR, 14, 9.5, f"overnight: {gap['overnight']:+.1f}%", "model", dy=0, ha="center", size=LB)
 if POOLED_CLOSED:
-    ja.label_at(aR, 1.45, aR.get_ylim()[1] - 5 if WIN.IS_ATLAS else aR.get_ylim()[0] + 3, f"futures closed: {gap['closed']:+.1f}%",
+    ja.label_at(aR, 0.5, aR.get_ylim()[1] - 5 if WIN.IS_ATLAS else aR.get_ylim()[0] + 3, f"futures closed or daily break: {gap['closed']:+.1f}%",
                 "faint", dy=0, ha="left", size=LB)
 else:
     d0, d1 = (f"{pd_.strftime('%b')} {pd_.day} to {(pd_ + dt.timedelta(days=2)).day}"

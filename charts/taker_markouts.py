@@ -23,7 +23,7 @@ LEAD60 = cl["T1"]["60"][0]
 WIN.expect("taker fees T1 / others, T1 60s markout, T1 share %",
            [round(FEE[True], 2), round(FEE[False], 2), round(LEAD60, 2), round(100 * m["T1_share"])], [0.30, 0.98, 0.38, 29])
 OFF = int(WIN.utc_offset_hours()); BRK = 16 - OFF + 1      # UTC hour of the daily CME halt (21 in daylight time)
-H = ["0", "1", "10", "60"]; xl = ["fill", "1s", "10s", "60s"]; x = np.arange(4)
+H = ["0", "1", "10", "60"]; xl = ["fill", "1 s", "10 s", "60 s"]; x = np.arange(4)
 
 fig, ax0 = ja.figure("wide_tall", "night"); ax0.remove()
 LB = 11
@@ -87,7 +87,7 @@ hi2 = sorted(ks[1:10], key=lambda k: -cl[k]["60"][0])[:2]
 WIN.expect("taker clusters labeled (highest 60s markout)", sorted(int(k[1:]) for k in hi2), [2, 6])
 for k in hi2:
     ja.label_at(b, ks.index(k) + 0.4, cl[k]["60"][0], f"{cl[k]['60'][0]:+.1f}", "actual", dy=-5, ha="left", size=LB)
-key_row(b, [("60s after fill", "actual"), ("10s after fill", "muted")])
+key_row(b, [("60 s after fill", "actual"), ("10 s after fill", "muted")])
 if max(cl[k]["60"][0] for k in hi2) > LEAD60:
     ja.note_at(b, 2.6, ytop_b - 0.4, "per dollar, some smaller takers lead the price more", role="muted", size=LB)
 ja.panel_title(b, "markout by taker cluster, 95% CI", size=LB)
@@ -102,9 +102,9 @@ c.bar(range(24), sh, color=[ja.C["actual"] if h == BRK else ja.C["model"] for h 
 c.set_ylim(0, ytop_c); c.set_yticks([v for v in range(0, 101, 10) if v < ytop_c - 5]); c.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.0f}%"))
 c.set_xticks(range(0, 24, 3)); c.grid(False, axis="x"); c.set_xlim(-0.8, 23.8)
 txt(c, 12.5 - OFF, ytop_c - 12.5, "US cash hours", "muted", ha="center")
-txt(c, BRK, sh[BRK] + 1.2, "CME break", "actual", ha="center", va="bottom", rotation=90)
+txt(c, BRK, sh[BRK] + 1.2, "daily break", "actual", ha="center", va="bottom", rotation=90)
 ss = {k: 100 * s[k]["T1_share"] for k in s}
-txt(c, -0.6, ytop_c - 4, f"cash {ss['Cash hours']:.0f}%   overnight {ss['ES overnight']:.0f}%   ES closed {ss['ES closed']:.0f}%", "ink", bold=False)
+txt(c, -0.6, ytop_c - 4, f"cash {ss['Cash hours']:.0f}%   overnight {ss['ES overnight']:.0f}%   futures closed {ss['ES closed']:.0f}%", "ink", bold=False)
 ja.panel_title(c, "when T1 trades", size=LB)
 c.set_xlabel("UTC hour, Mon to Fri", **AX); c.set_ylabel("T1 share of notional, %", **AX)
 

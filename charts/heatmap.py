@@ -69,16 +69,16 @@ for r in range(7):
 
 # the LED: the daily futures break (Wed 21:00 UTC)
 ax.plot([brk_col + 0.5], [2.5], marker="s", ms=0, mfc=ja.C["signal"], mec=ja.PUNK["ink"], mew=1.5, zorder=10)
-def cell_label(x, y, text, role, **kw):   # no box on cells: text color picked for contrast
+def cell_label(x, y, text, role, **kw):   # ground-colored backing so grid lines and cells do not cross the text
     t = ja.note_at(ax, x, y, text, role, size=11)
-    t.set_bbox(None); t.set_weight("semibold"); t.set(**kw)
+    t.set_weight("semibold"); t.set(**kw)
     return t
 
 
 cell_label(11.0, 5.5, f"{'weekend' if not WIN.HOLIDAYS else 'futures closed'}: ${med['weekend']:.1f}M, {r_wk:.2f}x of futures-open hours", "actual")
-cell_label(23.0, 1.0, f"break\n${med['break']:.1f}M\n{r_brk:.2f}x", "ground")
-cell_label(16.75, 0.5, f"US cash hours: ${med['cash']:.1f}M", "ground")
-cell_label(6.0, 0.5, f"other futures-open hours: ${med['other']:.1f}M", "ground")
+cell_label(23.0, 1.0, f"daily\nbreak\n${med['break']:.1f}M\n{r_brk:.2f}x", "actual", linespacing=1.25)
+cell_label(16.75, 0.5, f"US cash hours: ${med['cash']:.1f}M", "ink")
+cell_label(6.0, 0.5, f"overnight: ${med['other']:.1f}M", "ink")
 
 cb = fig.colorbar(im, cax=cax, ticks=[0, 3, 6, 9, 12, 15, 18])
 cb.outline.set_visible(False); cb.ax.tick_params(length=0, labelsize=10, colors=ja.C["muted"])
@@ -87,9 +87,9 @@ cb.set_label("median depth within 10 bps, $", color=ja.C["muted"], family=ja.MON
 
 ax.set_xlabel("hour of day, UTC", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
 ax.set_ylabel("day of week, UTC", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
-ax.annotate("solid: US cash session (9:30am to 4pm ET)", (0, 0), xycoords="axes fraction", xytext=(0, -46),
+ax.annotate("solid: US cash hours (9:30am to 4pm ET)", (0, 0), xycoords="axes fraction", xytext=(0, -46),
             textcoords="offset points", ha="left", va="top", family=ja.MONO, fontsize=10.5, color=ja.C["ink"])
-ax.annotate("dashed: CME equity futures closed (daily 5 to 6pm ET, weekend)", (0, 0), xycoords="axes fraction",
+ax.annotate("dashed: futures closed or daily break (5 to 6pm ET)", (0, 0), xycoords="axes fraction",
             xytext=(280, -46), textcoords="offset points", ha="left", va="top", family=ja.MONO, fontsize=10.5,
             color=ja.C["actual"])
 

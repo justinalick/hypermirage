@@ -31,12 +31,20 @@ v = fs.values.astype(float)
 pl = r.pivot(index="dist_bucket", columns="life_bucket", values="placed_usd").reindex(DIST)[LIFE].values
 li, lj = np.unravel_index(np.argmax(pl), pl.shape)
 ax.imshow(np.where(v > 0, v, np.nan), cmap=cmap, norm=LogNorm(1e-5, 0.7), aspect="auto")
+def pct2(x):   # two significant digits; whole percent from 10% up; tiny shares as "<0.001%"
+    if x == 0:
+        return "0"
+    if x < 0.001:
+        return "<0.001%"
+    return f"{x:.0f}%" if x >= 9.95 else f"{x:#.2g}%"
+
+
 for i in range(v.shape[0]):
     for j in range(v.shape[1]):
-        t = "0" if v[i, j] == 0 else (f"{100*v[i,j]:.1f}%" if v[i, j] >= 0.001 else f"{100*v[i,j]:.3f}%")
+        t = pct2(100 * v[i, j])
         rgb = cmap(LogNorm(1e-5, 0.7)(v[i, j]))[:3] if v[i, j] > 0 else (0, 0, 0)
         light = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2] > 0.5
-        dx_ = 0.13 if (i, j) == (li, lj) else 0
+        dx_ = 0.05 if (i, j) == (li, lj) else 0
         ax.text(j + dx_, i - 0.14, t, ha="center", va="center", fontsize=11, weight="semibold",
                 color=ja.C["ground"] if light else ja.C["ink"])
         ax.text(j + dx_, i + 0.24, cnt(nn.values[i, j]), ha="center", va="center", fontsize=9,
