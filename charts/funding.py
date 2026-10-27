@@ -124,6 +124,9 @@ axlab(B, "date, 2026", "median premium, bps")
 # C: cumulative funding for a constant 1x long
 cf = f.fund.cumsum() * 100
 years = len(f) / (24 * 365)
+# the window's own hours: a print at hour T settles the hour ending at T
+inwin = (f.index > pd.Timestamp(WIN.T0, tz="UTC")) & (f.index <= pd.Timestamp(WIN.T1, tz="UTC"))
+print(f"funding paid by a constant 1x long, window hours only ({inwin.sum()} prints): {f.fund[inwin].sum() * 100:+.3f}%")
 ja.zero(Cx)
 ja.line(Cx, cf.index, cf.values, "actual", lw=2.5)
 Cx.set_ylim(*ja.fit(-1.3, 0.15, cf, 0.1)); Cx.set_yticks([-1.2, -0.8, -0.4, 0]); Cx.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.1f}%"))

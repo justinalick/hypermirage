@@ -36,8 +36,8 @@ CT, ET = "America/Chicago", "America/New_York"
 # ES early halts (Chicago time) on US exchange holidays: date -> halt time. A Monday holiday reopens
 # at 17:00 the same day; a Friday holiday stays closed until the Sunday 17:00 open.
 ES_HOLIDAYS = {
-    "2026-04-03": "08:15",  # Good Friday: shortened session for the 8:30 ET payrolls release (sources differ; the
-                            # perp premium keeps its futures-open discount through the morning only). Funding chart only.
+    "2026-04-03": "08:15",  # Good Friday: shortened session around the 8:30 ET payrolls release; used by the
+                            # funding chart only (its public-API series starts before the window).
     "2026-05-25": "12:00",  # Memorial Day
     "2026-06-19": "12:00",  # Juneteenth
     "2026-07-03": "12:00",  # Independence Day (observed)
@@ -69,6 +69,12 @@ API_END = "2026-10-23 12:00" if IS_ATLAS else f"{T1} 00:00"
 _missing = sorted(d for d in NYSE_HOLIDAYS if ISO[0] <= d <= ISO[-1] and d not in ES_HOLIDAYS)
 if _missing:
     raise SystemExit(f"window: no ES holiday schedule for {', '.join(_missing)}; add it to ES_HOLIDAYS")
+# NYSE half days also shorten the futures session; their ES halts are not in ES_HOLIDAYS yet
+_early = sorted(d for d in NYSE_EARLY_CLOSE if ISO[0] <= d <= ISO[-1] and d not in ES_HOLIDAYS)
+if _early:
+    raise SystemExit(f"window: no ES early-halt schedule for the NYSE half days {', '.join(_early)}; add them to ES_HOLIDAYS")
+if N_DAYS > 365:
+    raise SystemExit("window: longer than a year; block() keys days by month and day")
 HOLIDAYS = sorted(d for d in ES_HOLIDAYS if ISO[0] <= d <= ISO[-1])
 
 

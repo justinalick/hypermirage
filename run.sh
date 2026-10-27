@@ -169,16 +169,28 @@ topic_queue() {
   heavy "$DUCKDB" data/derived/queue/queue.duckdb < analysis/queue_fill.sql
   "$PY" analysis/queue_km.py
 }
+topic_impact_decay() { bbo_t; heavy "$PY" analysis/impact_decay/decay.py; }      # after impact
+topic_shape_cost() { heavy "$PY" analysis/shape_cost/shape_cost.py; }            # after impact and metaorders
+topic_maker_rotation() { heavy "$PY" analysis/maker_rotation/rotation.py; }      # after concentration
+topic_taker_hours() { heavy "$PY" analysis/taker_hours/hours.py; }               # after taker_clusters
+topic_monthly() {                                                                # after survival, concentration, heatmap, vol_spread, impact
+  heavy "$PY" analysis/monthly/daily.py
+  heavy "$PY" analysis/monthly/monthly.py
+}
+topic_halts() { heavy "$PY" analysis/halts/halts.py; }
 
-TOPICS=(survival concentration markouts funding cancels heatmap depth_vol vol_spread impact metaorders ofi taker_clusters archetypes regimes queue)
+TOPICS=(survival concentration markouts funding cancels heatmap depth_vol vol_spread impact metaorders ofi taker_clusters archetypes regimes queue
+        impact_decay shape_cost maker_rotation taker_hours monthly halts)
 analysis() { inview; for t in "${@:-${TOPICS[@]}}"; do echo "== analysis: $t" >&2; "topic_$t"; done; }
 
 CHARTS=(metaorder_explainer survival concentration markouts markouts_violin funding cancels_1 cancels_2 cancels_3 heatmap depth_week
         depth_vol vol_spread impact
-        metaorder ofi taker_markouts archetypes_v2 regimes queue_fill)
+        metaorder ofi taker_markouts archetypes_v2 regimes queue_fill
+        impact_decay shape_cost monthly quotes_monthly maker_rotation taker_hours)
 charts() { inview; for c in "${CHARTS[@]}"; do echo "== chart: $c" >&2; "$PY" "charts/$c.py"; done; }
 
-CHECKS=(clock spotcheck funding queue cancels vol_spread)
+CHECKS=(clock spotcheck funding queue cancels vol_spread studies)
+check_studies() { for f in checks/studies/*_check.py; do heavy "$PY" "$f"; done; }   # recomputes of the new studies
 check_clock() { offhours; "$PY" checks/clock/holidays.py; }   # holiday halts in scripts/window.py vs the replayed book
 check_spotcheck() {
   for f in checks/spotcheck/*.py; do

@@ -35,11 +35,15 @@ FROM (SELECT *, usd / sum(usd) OVER (PARTITION BY d) AS s,
 pooled_group_top3 = con.execute("""
 SELECT sum(usd) FILTER (WHERE r <= 3) / sum(usd)
 FROM (SELECT g, sum(usd) AS usd, row_number() OVER (ORDER BY sum(usd) DESC) AS r FROM gk GROUP BY 1)""").fetchone()[0]
+con.execute("CREATE TEMP TABLE looked (a VARCHAR)")
+con.executemany("INSERT INTO looked VALUES (?)", [(a.lower(),) for a, v in roles["roles"].items() if v.get("role") is not None])
+looked_up_share = con.execute("SELECT sum(usd) FILTER (WHERE lower(address) IN (SELECT a FROM looked)) / sum(usd) FROM mk").fetchone()[0]
+print(f"maker volume from accounts with a sub-account lookup: {100 * looked_up_share:.1f}%")
 n_trades = con.execute(f"SELECT count(*) FROM read_parquet({FILES}) WHERE coin = 'xyz:SP500' AND crossed").fetchone()[0]
 assert [r[0] for r in daily] == DAYS
 out = dict(daily=[dict(d=r[0], vol=r[1], makers=r[2], r1=r[3], r23=r[4], r410=r[5]) for r in daily],
            pooled_top3=pooled_top3, n_makers=n_makers, total=total, group_top3=group_top3,
-           pooled_group_top3=pooled_group_top3, n_trades=n_trades)
+           pooled_group_top3=pooled_group_top3, n_trades=n_trades, looked_up_share=looked_up_share)
 json.dump(out, open(f"{ROOT}/data/derived/chart_cache/concentration.json", "w"), indent=1)
 print(pooled_top3, pooled_group_top3, n_makers, total, n_trades)
 print([round(100 * (r[3] + r[4]), 1) for r in daily]); print([round(100 * g, 1) for g in group_top3])

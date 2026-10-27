@@ -45,3 +45,7 @@ for tag in ['all', 'ex_top', 'top_only']:
         print(f"  {g:13s} mo={r['n_mo']:6d} ${r['notional_M']:7.0f}M  i0 {f(r['Y_i0'])}  i300 {f(r['Y_i300'])}  pre60 {f(r['Y_pre60'])}")
 for k, v in res['by_duration'].items(): print(k, round(v['Y'], 2), [round(v['lo'], 2), round(v['hi'], 2)], v['n'])
 for k in ['native_twap_ex_top', 'native_twap_all', 'const_clip_ex_top', 'const_clip_n']: print(k, res[k])
+tw = M[(M.twap > 0.5) & M.k3.notna()]
+res['native_twap_shape_share'] = {names[int(k)]: float(v) for k, v in tw.k3.value_counts(normalize=True).items()}
+print('native TWAPs (4+ child orders) by shape:', {k: round(v, 3) for k, v in res['native_twap_shape_share'].items()}, len(tw))
+json.dump(res, open(f"{O}/impact.json", "w"), indent=1)

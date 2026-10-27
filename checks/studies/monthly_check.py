@@ -30,8 +30,11 @@ for m, v in con.sql("""SELECT substr(regexp_extract(filename, '(\\d{8})', 1), 1,
 for m, v in con.sql("""SELECT substr("day", 1, 4) || '-' || substr("day", 5, 2) m, avg((new_oid IS NOT NULL)::DOUBLE)
         FROM read_parquet('data/derived/cancels/amends_*.parquet') GROUP BY 1""").fetchall():
     got[m]["replaced_share"] = v
-ok = True
-for m in sorted(R):
+KEYS = {"depth_cash_usd", "taker_usd_per_weekday", "fill_share", "replaced_share"}
+ok = set(got) == set(R) and all(set(got[m]) == KEYS for m in got)
+if not ok:
+    print("FAIL months or values missing:", sorted(set(R) ^ set(got)), {m: sorted(KEYS - set(got[m])) for m in got})
+for m in sorted(set(R) & set(got)):
     for k, v in got[m].items():
         good = abs(v - R[m][k]) <= 1e-9 * max(1, abs(v)); ok &= good
         print(f"{'OK  ' if good else 'FAIL'} {m} {k:22s} recompute {v:.6g}  monthly.json {R[m][k]:.6g}")

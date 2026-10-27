@@ -17,66 +17,74 @@ Research only; not investment advice.
 
 ---
 
-## Results: xyz:SP500, 2026-10-08 to 2026-10-21 UTC
+## Results: xyz:SP500, 2026-04-25 to 2026-10-24 UTC (183 days)
 
-26.0M displayed orders from 2,914 accounts, replayed block by block (about 70 ms) from node order
-statuses and checked against the exchange's one-minute book snapshots. Every number below was
-recomputed with separate code. `./run.sh charts` rebuilds the chart for each result in `out/`.
+321.4M displayed orders from 24,103 accounts, replayed block by block (about 70 ms) from node order
+statuses and checked against the exchange's one-minute book snapshots. The numbers below were
+recomputed with separate code (`checks/`), except the week-to-week and month-to-month rank statistics
+of the maker-rotation and taker-hours studies. `./run.sh charts` rebuilds the chart for each result in `out/`.
+The first, two-week edition of this atlas covered 2026-10-08 to 2026-10-21; `HM_START=20261008
+HM_END=20261021 ./run.sh all` still reproduces it (see Reproduce).
+
+A **metaorder** is one account's run of consecutive taker orders on the same side, with no gap longer
+than 5 minutes (liquidations excluded); each order in the run is a child order. Its impact is the mid
+just after its last fill against the mid just before its first.
 
 ### Five headline findings
 
 1. **Liquidity runs on the CME clock, not the stock market's.** Median depth within 10 bps of mid is
-   $15.4M in US cash hours, $13.2M in other futures hours, $4.7M in the daily futures break and $3.4M
-   on weekends. A hidden Markov model finds nothing beyond that clock: session alone matches its
-   two-state split in 99.5% of minutes.
-2. **Almost nothing on display ever trades.** 0.28% of $1.08T in displayed notional filled. Half of 30M
+   $13.7M in US cash hours, $11.4M in other futures hours, $4.6M in the daily futures break (about two
+   fifths) and $2.7M while futures are closed. A hidden Markov model finds little beyond that clock:
+   session alone matches its two-state split in 93.8% of minutes.
+2. **Almost nothing on display ever trades.** 0.23% of $18.9T in displayed notional filled. 45% of 382M
    cancels are the same account replacing an order on the same side in the same block, mostly
    re-centering on a moved touch.
-3. **Queue position decides who gets filled.** Orders that improve the touch fill 14.5% of the time;
-   orders joining behind more than $250k fill 3.2% of the time.
-4. **Small takers are early but still lose after fees.** Takers pay about 0.37 bps to cross, then the
-   price follows them. Orders under $10k are ahead in 67% of hours at 10 s, but at 1.13 bps in fees
-   they end about 1 bp underwater.
-5. **Metaorders move price far more than the book suggests.** Impact grows with size to the power of
-   about 0.38, and metaorders move the price about 2 to 6x more than one sweep of the displayed book
-   would. A metaorder is one account's consecutive taker orders on the same side, with no gap longer
-   than 5 minutes (liquidations excluded). Its impact is the mid just after its last fill against the
-   mid just before its first. The book benchmark is a single order of the same size sweeping the
-   displayed top 20 levels at once, with no refill. Part of the gap is price drift in the trader's
-   direction while they trade, not missing depth.
+3. **Queue position decides who gets filled.** Orders that improve the touch or join behind at most $5k
+   fill about 16% of the time; orders joining behind more than $250k fill 2.7% of the time.
+4. **Small takers are early but still lose after fees.** Takers pay about 0.67 bps to cross, and on
+   average the price does not follow them. Orders under $10k are ahead in 72% of hours at 10 s, but at
+   0.89 bps in fees they end about 0.7 bp underwater.
+5. **Metaorders move price far more than the book suggests, and most of it stays.** Impact grows with
+   size to the power of about 0.35, and metaorders move the price about 2 to 7x more than one sweep of the
+   displayed book would (a single order of the same size sweeping the top 20 levels at once, with no
+   refill). For metaorders of $1M or more, 85% of the move is still there 5 minutes after the last fill.
 
 ### Also measured
 
-- **Order survival.** Near the touch a quote is usually gone within a second: 65% of orders at or
-  inside the touch and 72% of orders up to 1 bp behind it, against 26% of orders more than 5 bps away.
-- **Maker concentration.** The top three maker accounts supply 36.0% of maker volume over the 14 days
-  (34% to 46% on single days), and which three changes from day to day. Merging sub-accounts declared
-  on Hyperliquid barely changes it (36.1%).
-- **Volatility widens the spread, not the book.** Within the same hour of day and the same day, during
-  futures hours the most volatile tenth of minutes has a median quoted spread 19% wider than the
-  calmest tenth (90% CI +15% to +24%), while depth within 10 bps is flat (-1.2%, 90% CI -4.9% to
-  +2.4%). The +19% compares medians of the time-weighted spread; the cross-check against exchange
-  snapshots uses means (+22%), since the snapshot spread is one tick most of the time.
+- **Month by month.** Cash-hours depth grew from $7.5M in May to $18.1M in July (2.4x) and was $15.6M in
+  October; the share of at-touch orders cancelled within 1 s rose from 44% to 66%.
+- **Order survival.** Near the touch a quote is usually gone within a second: 60% of orders at or inside
+  the touch and 57% of orders up to 1 bp behind it, against 37% of orders more than 5 bps away.
+- **Maker concentration and rotation.** The top three maker accounts supply 25.9% of maker volume pooled
+  and 36% on the median day; merging declared sub-accounts gives 34.9%. The same few groups lead most
+  weeks (top-20 rank correlation 0.93 week to week), and one has ranked first for the last 17 weeks.
+- **Volatility widens the spread, not the book, while futures trade.** The most volatile tenth of
+  minutes has a median quoted spread 17% wider than the calmest tenth (90% CI +15% to +19%), with depth
+  flat (-0.6%). With futures closed, volatile minutes are both wider (+89%) and thinner (-13%).
+- **Takers who lead the price keep leading.** Ranking the ten largest taker clusters by 60 s markout,
+  one month predicts the next (r = 0.71); the largest taker sits near +0.4 bps every month.
 - **Funding and the oracle premium.** The perp trades about 3 bps below the oracle only while CME
   futures are open (median -3.2 bps, against -0.05 bps while they are closed). Funding is small next to
-  that: a constant long collected 0.67% from 2026-03-18 to 2026-10-23, about 1.1% a year.
+  that: a constant long collected 0.66% from 2026-03-18 to 2026-10-25, about 1.1% a year.
 
 ### Null and negative results
 
-- **Depth does not thin in volatile minutes.** Across hours depth and volatility rise together, but
-  within the same day and hour volatile minutes carry about the same depth (-3.8% in cash hours, +4.8%
-  overnight).
-- **Order flow describes the move but does not forecast it.** OFI explains up to 57% of same-bin price
-  moves at 1 minute, but out-of-sample next-bin R-squared is 1.3% at 1 s and zero or negative from 10 s
-  on, far below the half-spread plus fees.
+- **Depth does not thin in volatile minutes while futures trade.** Across hours depth and volatility
+  rise together (rho +0.43), but within the same day and hour volatile minutes carry about the same depth
+  (-1.8% in cash hours, +0.3% overnight).
+- **Order flow describes the move but does not forecast it.** OFI explains about 61% of same-bin price
+  moves at 1 minute, but out-of-sample next-bin R-squared is 1.4% at 1 s, 0.5% at 10 s and about zero
+  from 1 minute on, far below the half-spread plus fees.
+- **Execution shape does not lower cost within an account.** Spread-out metaorders look cheaper across
+  traders (-0.29 bps against back-loaded, matched), but comparing an account with itself the gap shrinks
+  to -0.13 bps (CI includes zero) and spread out costs 0.20 bps more than front-loaded.
 - **Deep discounts to the oracle do not reliably predict a bounce.** The non-overlapping daily test
-  gives a correlation of -0.10 over 207 days (t = -1.46).
-- **Book regimes reduce to the clock.** A third HMM state is only a volatility label and is unstable
-  across week halves.
-- **Execution shape barely separates metaorders.** Only a three-way split (front-loaded, spread out,
-  back-loaded) is stable; the number of child orders matters more for impact than their timing.
-- **Trader archetypes mostly dissolve.** Clusters of accounts largely disappear when tested against
-  shuffled data; what remains is one block of fast post-only makers plus a continuum of takers.
+  gives a correlation of -0.10 over 209 days (t = -1.47).
+- **Book regimes reduce to the clock.** A third HMM state only separates calm from active minutes at
+  similar depth and is unstable across window halves (ARI 0.86 and 0.42).
+- **Trader archetypes only partly hold up.** 16 of 32 clusters are close to stable across refits, all
+  of them taker styles plus one small slow-maker group; the post-only maker block that supplies 63% of
+  notional does not split stably, and shuffled data still yields 11 clusters.
 
 All results describe measured behavior, not intent. An account is an address, not a firm.
 
@@ -202,6 +210,16 @@ and refuse a window that crosses a daylight saving change.
 | Book regimes | `regimes` | `analysis/regimes/` | `charts/regimes.py` |
 | Queue position and fills | `queue` | `analysis/queue_replay.py`, `analysis/queue_fill.sql`, `analysis/queue_km.py` | `charts/queue_fill.py` |
 | Cancels and amends | `cancels` | `analysis/cancels/` | `charts/cancels_1.py` to `charts/cancels_3.py` |
+| Impact after completion | `impact_decay` | `analysis/impact_decay/decay.py` | `charts/impact_decay.py` |
+| Execution shape and cost | `shape_cost` | `analysis/shape_cost/shape_cost.py` | `charts/shape_cost.py` |
+| Month by month | `monthly` | `analysis/monthly/daily.py`, `analysis/monthly/monthly.py` | `charts/monthly.py`, `charts/quotes_monthly.py` |
+| Maker rotation | `maker_rotation` | `analysis/maker_rotation/rotation.py` | `charts/maker_rotation.py` |
+| Taker markouts by hour of week | `taker_hours` | `analysis/taker_hours/hours.py` | `charts/taker_hours.py` |
+| Chain pauses (data quality) | `halts` | `analysis/halts/halts.py` | none |
+
+The last five topics read outputs of earlier ones (impact, metaorders, concentration, taker clusters, survival,
+heatmap, spread vs volatility), so run them after those; `./run.sh analysis` keeps that order. `./run.sh checks
+studies` recomputes each of them by a separate code path (`checks/studies/`).
 
 `charts/og_card.py` draws the report's link-preview image (1200 x 630) with the window, the order count and
 the impact ratio from the run's outputs. The first-version figure scripts kept in `analysis/` (for example

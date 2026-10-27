@@ -29,7 +29,8 @@ i0 = np.searchsorted(bt, ft, "left") - 1; ok = i0 >= 0; end = bt[-1]
 X = {}
 for h in (10, 60):
     ih = np.searchsorted(bt, ft + h * 10**9, "right") - 1
-    X[h] = (np.nan_to_num(s * (bmid[ih] - px) / px * 1e4), ok & (ft + h * 10**9 <= end))
+    x = s * (bmid[ih] - px) / px * 1e4                              # a fill with no mid is left out, not counted as 0
+    X[h] = (np.nan_to_num(x), ok & (ft + h * 10**9 <= end) & np.isfinite(x))
 ts = pd.to_datetime(ft, unit="ns", utc=True).tz_convert("America/New_York")
 how = (ts.dayofweek * 24 + ts.hour).to_numpy()                       # hour of week, Monday 00:00 New York = 0
 mon = ts.strftime("%Y-%m").to_numpy()

@@ -59,7 +59,8 @@ def strata_diff(D, y, other):
 
 
 def fe_diff(D, y, other):
-    """OLS of y on shape dummies and covariates, all demeaned within account (account fixed effects)."""
+    """Weighted least squares of y on shape dummies and covariates, all demeaned within account (account fixed
+    effects) with the same weights."""
     g = D[D["shape"].isin(["spread out", other])].copy()
     X = pd.DataFrame({"sp": (g["shape"] == "spread out").astype(float), "lx": np.log(g.q / g.V), "ln": np.log(g.n),
                       "ld": np.log1p(g.dur_s), "pre": g.pre60.fillna(0)})
@@ -68,8 +69,10 @@ def fe_diff(D, y, other):
     w = g.w.values
     keep = w > 0
     X, yy, ac, w = X[keep], g[y].values[keep], g.acct.values[keep], w[keep]
-    Xd = X - X.groupby(ac).transform("mean")
-    yd = yy - pd.Series(yy).groupby(ac).transform("mean").values
+    # weighted within-account means, so a day drawn twice in the bootstrap counts twice in the fixed effects too
+    sw_a = pd.Series(w).groupby(ac).transform("sum").values
+    Xd = X - (X.mul(w, axis=0).groupby(ac).transform("sum").values / sw_a[:, None])
+    yd = yy - pd.Series(yy * w).groupby(ac).transform("sum").values / sw_a
     sw = np.sqrt(w)
     beta = np.linalg.lstsq(Xd.values * sw[:, None], yd * sw, rcond=None)[0]
     return float(beta[0])
