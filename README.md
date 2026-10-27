@@ -45,7 +45,7 @@ than 5 minutes (liquidations excluded); each order in the run is a child order. 
    ahead in 72% of hours at 10 s and +0.18 bps at 1 minute, but at 0.89 bps in fees they end about
    0.7 bps underwater.
 5. **Metaorders move price far more than the book suggests, and most of it stays.** Impact grows with
-   size to the power of about 0.35, and metaorders move the price about 2 to 7x more than one sweep of the
+   size to the power of about 0.35, and metaorders move the price 2 to 7x more than one sweep of the
    typical displayed book would (a single order of the same size sweeping the top 20 levels at once, with no
    refill, averaged over one-minute snapshots), about 2 to 3.5x from $50k up. For metaorders of $1M or more
    whose account then stops trading for 5 minutes, 85% of the move is still there 5 minutes after the last fill.
@@ -234,7 +234,7 @@ the impact ratio from the run's outputs. The first-version figure scripts kept i
 `analysis/impact/plot.py`) describe the atlas window in their text and refuse other windows; `charts/` has
 the current version of each.
 
-`report/` holds the published page (`report/index.html`, `report/og-xyz-sp500-v6.png`). `node scripts/build.mjs` builds it into
+`report/` holds the published page (`report/index.html`, `report/og-xyz-sp500-v7.png`). `node scripts/build.mjs` builds it into
 `dist/` with its security headers for justinalick.com/projects/hypermirage; the build fails if the page would load anything
 from another site.
 

@@ -46,10 +46,10 @@ cmp = pd.DataFrame(json.load(open("data/derived/impact/robust.json"))["dollar_cm
 cmp = cmp[(cmp.Q <= 1.01e6) & (cmp.Q >= 1e3)]; ratio = cmp.obs_meta_i0 / cmp.book_mean
 r_lo, r_small = ratio.min(), ratio.max()   # the full range over $1k to $1M, as stated in the impact section
 # two lines, so the claim stays clear of the punk
-for i, ln in enumerate([f"Partly. Metaorders move price about {round(r_lo)} to {round(r_small)}x more", "than one sweep of the typical book."]):
+for i, ln in enumerate([f"Partly. Metaorders move price {round(r_lo)} to {round(r_small)}x more", "than one sweep of the typical book."]):
     fig.text(*px(x, y0 + 3 * lh - 8 + i * 30), ln, family=ja.SANS, fontsize=13, color=C["muted"], va="baseline")
 fig.text(*px(x, y0 + 3 * lh + 64), f"xyz:SP500  ·  {n_orders / 1e6:.0f}M orders  ·  {WIN.label()}",
          family=ja.MONO, fontsize=10.5, color=C["faint"], va="baseline")
 ja.handle_row(fig, x, H - (y0 + 3 * lh + 120), align="left")   # above the domain label X overlays bottom-left
 fig.add_artist(Rectangle((0, 0), 1, 1, transform=fig.transFigure, fill=False, ec=C["frame"], lw=4, zorder=100))
-fig.savefig("out/og-xyz-sp500-v6.png" if WIN.IS_ATLAS else f"out/og-xyz-sp500-{WIN.DAYS[0]}-{WIN.DAYS[-1]}.png", dpi=DPI, facecolor=C["ground"])
+fig.savefig("out/og-xyz-sp500-v7.png" if WIN.IS_ATLAS else f"out/og-xyz-sp500-{WIN.DAYS[0]}-{WIN.DAYS[-1]}.png", dpi=DPI, facecolor=C["ground"])
