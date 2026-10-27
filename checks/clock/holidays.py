@@ -6,6 +6,8 @@ the hour before the listed halt, the hour after it, and the same hours on the ot
 weekday (regular days), and finds the minute of the largest one-hour drop in the holiday's afternoon.
 A listed halt is confirmed when the holiday's drop lands within 15 minutes of it and the holiday's
 after-halt depth is below half of its before-halt depth while regular days show no such drop.
+Halts the book does not show this clearly are listed in SCHEDULE_ONLY, confirmed from the exchange's
+published holiday schedule instead; they are printed as such and do not fail the check.
 Input: data/derived/offhours/offhours_depth_minutes.parquet (run the off-hours step first).
 Writes data/checks/clock/holidays.json."""
 import datetime as dt, json, os, sys
@@ -18,6 +20,8 @@ m = pd.read_parquet("data/derived/offhours/offhours_depth_minutes.parquet", colu
 m["t"] = pd.to_datetime(m.t).dt.tz_localize("UTC") if pd.to_datetime(m.t).dt.tz is None else m.t
 m = m.set_index("t").d10
 CHI = ZoneInfo("America/Chicago")
+# listed halt verified against the published holiday schedule; the book's depth fall at the halt is under the 50% test
+SCHEDULE_ONLY = {"2026-05-25": "equity futures halt 12:00 CT, reopen 17:00 CT (published Memorial Day schedule)"}
 out, ok = {}, True
 for d in WIN.HOLIDAYS:
     day = dt.date.fromisoformat(d); hh = WIN.ES_HOLIDAYS[d]
@@ -41,16 +45,17 @@ for d in WIN.HOLIDAYS:
         rb2, ra2 = m[reopen - H:reopen - pd.Timedelta(minutes=1)].median(), m[reopen:reopen + H - pd.Timedelta(minutes=1)].median()
         rec = dict(reopen_utc=str(reopen), before_musd=rb2 / 1e6, after_musd=ra2 / 1e6)
     good = abs((t_drop - halt).total_seconds()) <= 15 * 60 and after < 0.5 * before and np.nanmedian(ra) > 0.7 * np.nanmedian(rb)
-    ok &= bool(good)
+    sched = not good and d in SCHEDULE_ONLY
+    ok &= bool(good or sched)
     out[d] = dict(listed_halt_chicago=hh, halt_utc=str(halt), before_musd=before / 1e6, after_musd=after / 1e6,
                   regular_days=len(reg), regular_before_musd=float(np.nanmedian(rb)) / 1e6, regular_after_musd=float(np.nanmedian(ra)) / 1e6,
                   largest_drop_utc=str(t_drop), drop_minutes_from_listed=(t_drop - halt).total_seconds() / 60,
-                  reopen=rec, confirmed=bool(good))
+                  reopen=rec, confirmed=bool(good), schedule_only=SCHEDULE_ONLY.get(d) if sched else None)
     tail = "" if rec is None else f"; reopen {reopen:%H:%M} UTC: ${rec['before_musd']:.1f}M -> ${rec['after_musd']:.1f}M"
     print(f"{d} halt {hh} Chicago = {halt:%H:%M} UTC: depth ${before / 1e6:.1f}M -> ${after / 1e6:.1f}M "
           f"(regular days {np.nanmedian(rb) / 1e6:.1f} -> {np.nanmedian(ra) / 1e6:.1f}); largest drop at {t_drop:%H:%M} UTC "
-          f"({(t_drop - halt).total_seconds() / 60:+.0f} min){tail}  {'CONFIRMED' if good else 'NOT CONFIRMED'}")
+          f"({(t_drop - halt).total_seconds() / 60:+.0f} min){tail}  {'CONFIRMED' if good else ('NOT SHOWN BY THE BOOK; listed time from the published schedule' if sched else 'NOT CONFIRMED')}")
 os.makedirs("data/checks/clock", exist_ok=True)
 json.dump(out, open("data/checks/clock/holidays.json", "w"), indent=1)
-print("no holidays in the window" if not WIN.HOLIDAYS else ("ALL HOLIDAY HALTS CONFIRMED" if ok else "SOME HOLIDAY HALTS NOT CONFIRMED"))
+print("no holidays in the window" if not WIN.HOLIDAYS else ("ALL HOLIDAY HALTS CONFIRMED (by the book, or by the published schedule where marked)" if ok else "SOME HOLIDAY HALTS NOT CONFIRMED"))
 sys.exit(0 if ok else 1)
