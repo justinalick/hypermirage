@@ -37,15 +37,15 @@ def lab(x, y, text, role, ha="left", va="center", rot=0, size=LB):
     return t
 
 
-def along(b, x0, x1, dy_px, text, role):
-    """Label rotated along a curve's straight stretch, offset dy_px above it."""
+def along(b, x0, x1, dy_px, text, role, va="bottom"):
+    """Label rotated along a curve's straight stretch, offset dy_px above it (below it when dy_px < 0, with va="top")."""
     s_ = 100 * np.array(cv[b]["s"])
     p0 = ax.transData.transform((x0, np.interp(x0, t, s_ / 100) * 100))
     p1 = ax.transData.transform((x1, np.interp(x1, t, s_ / 100) * 100))
     ang = np.degrees(np.arctan2(p1[1] - p0[1], p1[0] - p0[0]))
     n = np.array([-np.sin(np.radians(ang)), np.cos(np.radians(ang))])
     xy = ax.transData.inverted().transform(p0 + dy_px * n)
-    t_ = lab(xy[0], xy[1], text, role, va="bottom", rot=ang)
+    t_ = lab(xy[0], xy[1], text, role, va=va, rot=ang)
     t_._ja_label = False   # ja.check tests axis-aligned boxes, which a rotated label's box is not; checked by eye
     return t_
 
@@ -57,10 +57,9 @@ ja.signal(ax, 1, sa, ms=0)
 N = {b: f"{cv[b]['n'] / 1e6:.1f}M" for b in "abcd"}
 lab(0.86, 18.5, f"at or inside the touch ({N['a']})\n{c1['a']:.0%} cancelled by 1 s", "actual", ha="right", size=11)
 lab(0.86, 5.5, f"up to 1 bp behind ({N['b']})\n{c1['b']:.0%} cancelled by 1 s", "model", ha="right", size=11)
-lab(1.2, 100 * (1 - c1["d"]) + 13.5, f"more than 5 bps: {c1['d']:.0%} cancelled by 1 s", "dim", va="bottom")
-lab(1.2, 100 * (1 - c1["d"]) + 5.5, f"1 to 5 bps: {c1['c']:.0%} cancelled by 1 s", "faint", va="bottom")
-along("d", 3, 40, 8, f"more than 5 bps behind ({N['d']})", "dim")
-along("c", 2.2, 20, 8, f"1 to 5 bps behind ({N['c']})", "faint")
+# the two outer curves are close together, so they get a small key (line swatch in the curve color) instead of labels on the curves
+lab(1.2, 100 * (1 - c1["d"]) + 13.5, f"\u2501\u2501 more than 5 bps behind ({N['d']}): {c1['d']:.0%} cancelled by 1 s", "dim", va="bottom")
+lab(1.2, 100 * (1 - c1["d"]) + 5.5, f"\u2501\u2501 1 to 5 bps behind ({N['c']}): {c1['c']:.0%} cancelled by 1 s", "faint", va="bottom")
 
 ja.panel_title(ax, "displayed orders, by distance from the touch at entry", size=LB)
 ax.set_xlabel("time since the order first appeared in the book, log scale", color=ja.C["muted"], family=ja.MONO, fontsize=LB)
