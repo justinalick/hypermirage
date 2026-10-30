@@ -73,11 +73,11 @@ def run(aid, typ, t, px, d, sp, crossed, liq, T0, T1):
     # traded notional, maker notional, fills, account, opened/closed by liquidation, chain-break flag
     e_open = np.empty(n + 1, np.int64); e_close = np.empty(n + 1, np.int64); e_peak = np.zeros(n + 1)
     e_vol = np.zeros(n + 1); e_mk = np.zeros(n + 1); e_n = np.zeros(n + 1, np.int64); e_a = np.empty(n + 1, np.int64)
-    e_liq = np.zeros(n + 1, np.int8); e_brk = np.zeros(n + 1, np.bool_)
+    e_liq = np.zeros(n + 1, np.int8); e_brk = np.zeros(n + 1, np.bool_); e_side = np.zeros(n + 1, np.int8)
     ne = 0
     # lots
     q_t = np.empty(n + 1, np.int64); q_q = np.empty(n + 1)
-    hist = np.zeros((3, NB)); hq = np.zeros((3, 2))         # notional-weighted hold histogram; qty, qty*hold_s
+    hist = np.zeros((3, 2, NB)); hq = np.zeros((3, 2, 2))   # [type, long/short]: notional-weighted hold histogram; qty, qty*hold_s
     cens_left = np.zeros(3); cens_right = np.zeros(3); closed_nt = np.zeros(3)
     little_inv = np.zeros(3); little_out = np.zeros(3)     # contract-seconds held; contracts closed
     breaks = 0
@@ -92,7 +92,7 @@ def run(aid, typ, t, px, d, sp, crossed, liq, T0, T1):
         little_inv[ty] += abs(sp[i]) * (t[i] - T0) / 1e9
         if qs != 0:
             q_t[tail] = -1; q_q[tail] = abs(pos); tail += 1
-            cur = ne; e_open[ne] = -1; e_close[ne] = -1; e_a[ne] = a; ne += 1
+            cur = ne; e_open[ne] = -1; e_close[ne] = -1; e_a[ne] = a; e_side[ne] = qs; ne += 1
         for k in range(i, j):
             s0 = sp[k]; s1 = s0 + d[k]
             if abs(s1) < EPS:
@@ -104,7 +104,7 @@ def run(aid, typ, t, px, d, sp, crossed, liq, T0, T1):
                 head = tail
                 if sgn(s0) != 0:
                     q_t[tail] = -1; q_q[tail] = abs(s0); tail += 1
-                    cur = ne; e_open[ne] = -1; e_close[ne] = -1; e_a[ne] = a; ne += 1
+                    cur = ne; e_open[ne] = -1; e_close[ne] = -1; e_a[ne] = a; e_side[ne] = sgn(s0); ne += 1
             g0 = sgn(s0); g1 = sgn(s1)
             notl = abs(d[k]) * px[k]
             # ---- episodes
@@ -117,7 +117,7 @@ def run(aid, typ, t, px, d, sp, crossed, liq, T0, T1):
                     e_liq[cur] |= 2
                 e_close[cur] = t[k]; cur = -1
             if g1 != 0 and g1 != g0:                     # opens from flat or flips
-                cur = ne; e_open[ne] = t[k]; e_close[ne] = -1; e_a[ne] = a
+                cur = ne; e_open[ne] = t[k]; e_close[ne] = -1; e_a[ne] = a; e_side[ne] = g1
                 part = abs(s1) / abs(d[k])
                 e_vol[ne] += notl * part; e_n[ne] += 1
                 if not crossed[k]:
@@ -133,6 +133,7 @@ def run(aid, typ, t, px, d, sp, crossed, liq, T0, T1):
                 e_peak[cur] = max(e_peak[cur], abs(s1) * px[k])
             # ---- lots (FIFO)
             red = 0.0
+            sd = 0 if g0 > 0 else 1                      # lots being closed are long (0) or short (1)
             if g0 != 0 and g1 != g0:
                 red = abs(s0)
             elif g0 != 0 and abs(s1) < abs(s0):
@@ -143,8 +144,8 @@ def run(aid, typ, t, px, d, sp, crossed, liq, T0, T1):
                     cens_left[ty] += m * px[k]
                 else:
                     h = t[k] - q_t[head]
-                    hist[ty, hbin(h)] += m * px[k]
-                    hq[ty, 0] += m; hq[ty, 1] += m * h / 1e9
+                    hist[ty, sd, hbin(h)] += m * px[k]
+                    hq[ty, sd, 0] += m; hq[ty, sd, 1] += m * h / 1e9
                 closed_nt[ty] += m * px[k]; little_out[ty] += m
                 q_q[head] -= m; red -= m
                 if q_q[head] <= EPS:
@@ -163,11 +164,11 @@ def run(aid, typ, t, px, d, sp, crossed, liq, T0, T1):
         for h in range(head, tail):
             cens_right[ty] += q_q[h] * px[j - 1]
         i = j
-    return (e_open[:ne], e_close[:ne], e_peak[:ne], e_vol[:ne], e_mk[:ne], e_n[:ne], e_a[:ne], e_liq[:ne], e_brk[:ne],
+    return (e_open[:ne], e_close[:ne], e_peak[:ne], e_vol[:ne], e_mk[:ne], e_n[:ne], e_a[:ne], e_liq[:ne], e_brk[:ne], e_side[:ne],
             hist, hq, cens_left, cens_right, closed_nt, little_inv, little_out, breaks)
 
 
-(e_open, e_close, e_peak, e_vol, e_mk, e_n, e_a, e_liq, e_brk, hist, hq, cens_left, cens_right, closed_nt,
+(e_open, e_close, e_peak, e_vol, e_mk, e_n, e_a, e_liq, e_brk, e_side, hist, hq, cens_left, cens_right, closed_nt,
  little_inv, little_out, breaks) = run(aid, typ, t, px, d, sp, crossed, liq, T0, T1)
 acct_typ = np.zeros(n_acct, np.int8); acct_typ[aid] = typ
 e_typ = acct_typ[e_a]
@@ -254,6 +255,11 @@ out["episodes_notional_weighted"]["all"] = episode_stats(ok, e_vol)
 for k in range(3):
     out["episodes"][TYPES[k]] = episode_stats(ok & (e_typ == k))
     out["episodes_notional_weighted"][TYPES[k]] = episode_stats(ok & (e_typ == k), e_vol)
+for sv, lab in ((1, "long"), (-1, "short")):
+    out["episodes"][lab] = episode_stats(ok & (e_side == sv))
+    out["episodes_notional_weighted"][lab] = episode_stats(ok & (e_side == sv), e_vol)
+    for k in (0, 2):
+        out["episodes"][f"{TYPES[k]}, {lab}"] = episode_stats(ok & (e_typ == k) & (e_side == sv))
 for lo, hi, lab in SIZE:
     out["episodes"]["peak " + lab] = episode_stats(ok & (e_peak >= lo) & (e_peak < hi))
     out["episodes"]["taker, peak " + lab] = episode_stats(ok & (e_typ == 2) & (e_peak >= lo) & (e_peak < hi))
@@ -278,9 +284,15 @@ def lot_stats(h, qq, cl, cr, ct, li, lo_):
 
 
 for k in range(3):
-    out["lots"][TYPES[k]] = lot_stats(hist[k], hq[k], cens_left[k], cens_right[k], closed_nt[k], little_inv[k], little_out[k])
-out["lots"]["all"] = lot_stats(hist.sum(0), hq.sum(0), cens_left.sum(), cens_right.sum(), closed_nt.sum(),
+    out["lots"][TYPES[k]] = lot_stats(hist[k].sum(0), hq[k].sum(0), cens_left[k], cens_right[k], closed_nt[k], little_inv[k], little_out[k])
+out["lots"]["all"] = lot_stats(hist.sum((0, 1)), hq.sum((0, 1)), cens_left.sum(), cens_right.sum(), closed_nt.sum(),
                                little_inv.sum(), little_out.sum())
+# by side: censoring and open-interest terms are not split by side, so only the measured distribution is reported
+for sd, lab in ((0, "long"), (1, "short")):
+    for k, g in ((None, "all"), (0, TYPES[0]), (2, TYPES[2])):
+        h_ = hist[:, sd].sum(0) if k is None else hist[k, sd]
+        q_ = hq[:, sd].sum(0) if k is None else hq[k, sd]
+        out["lots"][f"{g}, {lab}"] = lot_stats(h_, q_, 0.0, 0.0, h_.sum(), 0.0, 0.0)
 json.dump(out, open(f"{O}/holding.json", "w"), indent=1)
 
 # ---- printout
@@ -307,7 +319,7 @@ print(f"closed by liquidation: {out['episodes_liquidation_closed_share']:.2%} of
 print("\nLOTS (FIFO), notional-weighted hold of each closed contract")
 for g, r in out["lots"].items():
     if r:
-        print(f"{g:12s} closed ${r['closed_notional_usd'] / 1e9:.2f}B  p10 {fmt(r['p10_s'])}  p25 {fmt(r['p25_s'])}  "
+        print(f"{g:22s} closed ${r['closed_notional_usd'] / 1e9:.2f}B  p10 {fmt(r['p10_s'])}  p25 {fmt(r['p25_s'])}  "
               f"median {fmt(r['p50_s'])}  p75 {fmt(r['p75_s'])}  p90 {fmt(r['p90_s'])}  p99 {fmt(r['p99_s'])}  "
               f"mean {fmt(r['mean_s_qty_weighted'])}  OI-view {fmt(r['open_interest_mean_s'])}  "
               f"pre-window {r['opened_before_window_share_of_closed']:.1%}")
