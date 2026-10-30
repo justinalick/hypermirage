@@ -26,6 +26,9 @@ EPS = 1e-9
 con = duckdb.connect(); con.execute("SET memory_limit='6GB'; SET threads=4")
 SRC = f"read_parquet('data/raw/xyz/fills/*.parquet')"
 cols = set(con.execute(f"DESCRIBE SELECT * FROM {SRC}").df().column_name)
+# Within one account's millisecond the trade id does not follow the position chain (on the six-month window it
+# gave 7.0M chain breaks). Ordering same-ms fills by sign(size) * start_position puts a run of buys in rising and a
+# run of sells in falling position order, which chains them; mixed-side milliseconds can still break (0.1%).
 tie = next((c for c in ("tid", "trade_id", "block_number", "hash") if c in cols), None)
 print("fill columns:", sorted(cols)); print("tie-break within an account's millisecond:", tie)
 con.execute(f"""CREATE TEMP TABLE f AS
@@ -39,7 +42,7 @@ con.execute("""CREATE TEMP TABLE acct2 AS SELECT a, row_number() OVER (ORDER BY 
                CASE WHEN mk >= 0.8 THEN 0 WHEN mk <= 0.2 THEN 2 ELSE 1 END typ FROM acct""")
 TYPES = ["maker-heavy", "mixed", "taker"]
 x = con.execute(f"""SELECT aid, typ, t, px, d, sp, crossed, liq FROM f JOIN acct2 USING (a)
-                    ORDER BY aid, t{', ' + tie if tie else ''}""").fetchnumpy()
+                    ORDER BY aid, t, sign(d) * sp{', ' + tie if tie else ''}""").fetchnumpy()
 aid, typ, t, px, d, sp = (np.ascontiguousarray(x[k]) for k in ("aid", "typ", "t", "px", "d", "sp"))
 crossed = np.ascontiguousarray(x["crossed"]).astype(np.bool_); liq = np.ascontiguousarray(x["liq"]).astype(np.bool_)
 typ = typ.astype(np.int8); aid = aid.astype(np.int64)
@@ -76,7 +79,8 @@ def run(aid, typ, t, px, d, sp, crossed, liq, T0, T1):
     e_liq = np.zeros(n + 1, np.int8); e_brk = np.zeros(n + 1, np.bool_); e_side = np.zeros(n + 1, np.int8)
     ne = 0
     # lots
-    q_t = np.empty(n + 1, np.int64); q_q = np.empty(n + 1)
+    # a lot per fill plus one per chain break (the queue restarts at its tail), so at most 2n + 1 slots
+    q_t = np.empty(2 * n + 2, np.int64); q_q = np.empty(2 * n + 2)
     hist = np.zeros((3, 2, NB)); hq = np.zeros((3, 2, 2))   # [type, long/short]: notional-weighted hold histogram; qty, qty*hold_s
     cens_left = np.zeros(3); cens_right = np.zeros(3); closed_nt = np.zeros(3)
     little_inv = np.zeros(3); little_out = np.zeros(3)     # contract-seconds held; contracts closed
