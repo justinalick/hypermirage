@@ -299,6 +299,43 @@ for sd, lab in ((0, "long"), (1, "short")):
         out["lots"][f"{g}, {lab}"] = lot_stats(h_, q_, 0.0, 0.0, h_.sum(), 0.0, 0.0)
 json.dump(out, open(f"{O}/holding.json", "w"), indent=1)
 
+# ---- histograms for charts/holding.py, 10 bins per decade from 1 ms (bin 0: under 1 ms), as shares of each total.
+# Positions: closed episodes only (still-open ones are 0.4% on the six-month window), by count and by notional traded.
+# Lots: the notional-weighted FIFO histogram above, merged 4 bins to 1. Small enough to copy out as text.
+HB = 10; HN = 1 + int((8 - LO) * HB)
+h_edges = [0.0] + [round(10 ** (LO + i / HB), 6) for i in range(HN)]
+
+
+def ep_hist(m, w=None):
+    v = dur[m & done]; ww = None if w is None else w[m & done]
+    b = np.where(v < 1e-3, 0, np.minimum(1 + np.floor((np.log10(np.maximum(v, 1e-3)) - LO) * HB).astype(int), HN - 1))
+    h = np.bincount(b, weights=ww, minlength=HN).astype(float)
+    return h
+
+
+def lot_hist(h):
+    c = np.zeros(HN); c[0] = h[0]
+    for i in range(1, NB):
+        c[min(1 + (i - 1) // (BPD // HB), HN - 1)] += h[i]
+    return c
+
+
+def pack(h):
+    tot = h.sum()
+    return {"total": float(tot), "share": [round(float(x / tot), 6) if tot else 0.0 for x in h]}
+
+
+H = {"edges_s": h_edges, "positions_count": {}, "positions_notional": {}, "lots_notional": {}}
+for g, m in [("all", ok), ("long", ok & (e_side == 1)), ("short", ok & (e_side == -1))] + \
+            [(TYPES[k], ok & (e_typ == k)) for k in range(3)]:
+    H["positions_count"][g] = pack(ep_hist(m)); H["positions_notional"][g] = pack(ep_hist(m, e_vol))
+H["lots_notional"]["all"] = pack(lot_hist(hist.sum((0, 1))))
+for sd, lab in ((0, "long"), (1, "short")):
+    H["lots_notional"][lab] = pack(lot_hist(hist[:, sd].sum(0)))
+for k in range(3):
+    H["lots_notional"][TYPES[k]] = pack(lot_hist(hist[k].sum(0)))
+json.dump(H, open(f"{O}/holding_hist.json", "w"), separators=(",", ":"))
+
 # ---- printout
 print(f"\n{out['window']}; {n:,} fills; accounts {out['account_types']}")
 print(f"episodes with unknown open time, opened before the window or after a chain break (excluded): {out['episodes_opened_before_window']:,}; "
